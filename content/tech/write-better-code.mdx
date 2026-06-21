@@ -1,0 +1,69 @@
+﻿---
+title: "关于思考的思考：如何写出更好的代码"
+date: "2026-06-18"
+tags: ["编程", "思考方法"]
+description: "好的代码不仅是逻辑的产物，更是思考方式的外化。这篇文章探讨如何通过改善思维方式来写出更优雅的代码。"
+published: true
+---
+
+## 代码是思考的映射
+
+写代码这件事，本质上是一个**不断转化**的过程：
+
+1. 模糊的想法 → 清晰的问题定义
+2. 问题定义 → 逻辑结构
+3. 逻辑结构 → 具体实现
+
+每一步都需要不同的思维方式。很多人在第一步就跳过了，直接跑到第三步，结果写出了能运行但难以理解的代码。
+
+## 先想清楚，再写清楚
+
+有一种常见的误解：写得快等于想得快。其实恰恰相反。当你花时间想清楚再写，总时间往往更少。
+
+`
+// 不好的做法：边想边写
+function process(data) {
+  let r = [];
+  for (let i = 0; i < data.length; i++) {
+    // ... 大量的临时逻辑
+  }
+  return r;
+}
+
+// 好的做法：先想清楚结构
+function process(data) {
+  const validated = validateInput(data);
+  const transformed = transform(validated);
+  return formatOutput(transformed);
+}
+`
+
+### 命名即思考
+
+命名可能是编程中最被低估的技能。一个好的名字不仅告诉别人这段代码在做什么，也帮助你理清自己的思路。
+
+- 如果你发现很难给一个函数命名，可能意味着它的职责还不够清晰
+- 如果你需要用注释来解释一个变量名，那这个名字本身可能不够好
+- 名字的长度应该与它的作用域成正比
+
+## 保持简单
+
+有一句编程界的名言：
+
+> Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.
+>
+> — Brian Kernighan
+
+这句话的深意在于：**可读性是一种美德**。
+
+### 一些具体的建议
+
+1. **每个函数只做一件事**。如果一个函数需要"并且"来解释，可能太复杂了。
+2. **减少嵌套**。嵌套越深，心智负担越重。尽早返回。
+3. **写注释解释"为什么"而不是"是什么"**。代码本身已经说明了"是什么"。
+
+## 写在最后
+
+写代码和写作很像：第一稿只是把你的想法倒出来，然后你需要反复修改，直到它变得清晰、简洁、有力量。
+
+好的代码不是一次写成的，而是反复打磨的结果。

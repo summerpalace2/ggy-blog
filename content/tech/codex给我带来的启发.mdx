@@ -1,0 +1,132 @@
+---
+title: "Codex给我带来的启发"
+date: "2026-06-19T18:30:06.625Z"
+tags: []
+category: "tech"
+description: ""
+published: true
+---
+
+# 
+
+看到抖音上有人持有一种观点，ai时代那些使用普通的大模型，普通AI工具的人，会被使用国外顶尖模型的顶级大模型的人来看差距
+
+从今年5月开始我开始使用opencode，起初使用opencode的时候就已经惊艳到我了。
+
+自我思考修改报错，直接修改文件，高效的处理速度，多并发，代码删改直接展示在眼前的惊艳感，让我大受震撼。这不仅大大增加了我的生产力，而且降低了我的一些学习门槛，让实现伪全栈更加简单，随后就开始大肆使用opencode,以至于使用deepseek的性价比api，一个月都花了140\.
+
+6月份开始，临近端午，我在抖音上刷到了关于codex的视频，感觉codex的生态比较齐全，不过我最像要的其实是它的自动化任务这个操作，这是其他agent不具备的
+
+后面我使用了**cc switch\(**[cc switch github链接](https://github.com/farion1231/cc-switch)**\)**和**codex\+\+**（[codex\+\+github地址](https://github.com/BigPizzaV3/CodexPlusPlus)）的方式来使用国产模型兼容**codex**（我后面会出教程来告诉大家怎么使用\)**。**但是codex的自动化死活用不了，第二天发现它自己就好了，其实感受是他抽风了。
+
+## 自动化任务
+
+现在讲一些对这个自动化流程的感受，总之就是，算是颠覆了我的认知吧，不是说这个功能有多么强大，而是说这个功能，改变了我们的一种思维模式，对于一种重复性的长期坚持性的任务，
+
+下面是codex的自动化任务管理
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=M2MzNTJhMTlkNGJjN2JkZGRmMTlmYjNkNjNkYmViNGRfYjA4YmVkOGFiOWM2YWU4OGM5NTkwMmE5YjQxMDJlMDRfSUQ6NzY1MzE0OTQ4Nzg2NjY5NDYyMl8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+我们可以把他封装起来作为定时任务，每天都给自己发送一次，让我感到意外的是它还有自己的记忆，我看了文字后会对他的文档有改进需求，然后他会直接把我的需求以及他遇到的一些问题总结成记忆文件，每次新生成任务时会去看，不断积累不断完善，这是我之前没有想过的思维
+
+记忆文档展示
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=MTU0ZTBjYWFiNGU4OGYzZDk2M2U0N2VlOTYxZGZjODJfZGEzM2IyNDQxMzAzZDQ3YTgxYWM0NGE2OGQ1OTU2M2ZfSUQ6NzY1MzE0OTg2ODc0NzE5NzM5MF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+## 完整的生态体系
+
+### 插件 Skills Mcp多样化
+
+codex配合codex\+\+，可以安装超级多好用的插件，内置浏览器，figma,computer use等等，使用起来真的非常方便
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=OGFjOGQxMjM1YzBiODk2OTllODA1NzQyMjc3ZTM1ZDhfMTJkNDk4Y2M1NDlkM2I5Zjc0MTI2NmJiOGUxNmQzMmRfSUQ6NzY1MzE1MDQ1Njg0NzMyMjA2NF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+至于skills和mcp这是agent共用内容这样不再赘述
+
+### 全面的工作流体系
+
+Codex支持并行，插队，排队的三个操作
+
+*提示：建议开启审批也就是默认模式，只是因为特殊需求我才开的全部访问*
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=MzM5NDIxNDk4ZmNiNjdmM2U4ODIxNWQwZWIzOWNlOTZfYjZmNjEyNTYyMmY4MDcxZTc1ZjIxN2Q3NDFkNWUxZDhfSUQ6NzY1MzE1MzA3ODgzNjc1OTQ4M18xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+#### 并行
+
+就是同时进行多个对话
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=Y2U3MmRjM2E5ZDhkZWNiOGZiNGU2MWVmY2I4Zjk4M2JfZTMzZjZmNGM4ZmQ2OGY5NTFjYWI0NzQ1NjIyYjZkZmNfSUQ6NzY1MzE1MTQxODAwNTcwMzY2OF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+#### 插队
+
+在对话进行中临时增加需求点击预览，让ai优先处理
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=OTVhNDhlYTI1ZjA2NDJkNTZhMzgyZTE3MzYyY2E3ODFfYzFkNjNkNmE1NWJlMDU3MmYzYTJjNjU2ZTI1NDM0YTVfSUQ6NzY1MzE1MTY1MzUzMjU2ODc2NF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+先在中途添加你的想法，点击引导。可以看到agent优先处理你插队的内容
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=YTI1YWU2YmVkMTY4NTYwNjViZDg1YmM4N2U1NTJiNzdfYTc5NjRmMDlkZWNkMTY4ZjQ3YWE5ODQ5MzQyNWYwM2JfSUQ6NzY1MzE1MTgxMjE0NDQwMTM5Nl8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+#### 排队
+
+如果这里没有点击引导，就会等待当前任务结束再执行这个任务
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=ZTVhMDExZTk0NzJjMmRmMzYzYmQwNTA5MjZhZTlkMDlfODNjZDlmMjBjMzc1ZmI1MzJmYzhjZTBiZjdlMzQzMjlfSUQ6NzY1MzE1MjAxNDIzODU1MTAxNF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+#### 工作树
+
+工作数是一种可以理解为git开发执行的操作，我暂时还没有使用这里不说了
+
+#### 分叉
+
+点击这里有个分叉按钮，他会让ai带着这次对话进入一个新的对话，不过这个对话之前的上下文不会带过来这个注意，如果是写项目中上下文耗尽，建议让ai生成进度文档或者总结文档方便新对话的开始
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=MzYwMzIzOTZmNzY5NGMwOTRiNTAyZjRlYTc0OGRiYzNfZGI4ZWFhYjk0NjRjYmE0NWU4YjNkOTdjOGMwM2JiNDRfSUQ6NzY1MzE1NDg3MzA2MzUyNTMwN18xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+点击成功会这样显示
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=OWVmZWY1NWM0MTRmOWE3MDI4N2MxNzczNWIzZDkwMmZfY2YxODc3NGI3N2Q3ZGZhNjE5YTRkOTA2ZDY1MWQ1ZDVfSUQ6NzY1MzE1NTEwMDkwNjUwNzQ2MF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+## 神来之笔
+
+这是我本次使用codex的最大收获！
+
+我在使用codex的时候发现codex配合deepseek v4 pro的代码能力不强，而且很慢，并且写出来的东西不太符合我的要求。同时我之前也使用agent实现了3个vibecoding项目，结果与前面vibecoding的经验，我凝聚出了这样的提示词
+
+> 如果上面的任务太多了 你可以分步来完成和每实现一个功能进行自查 自查不仅要检查代码的bug 而且要优化代码和增加一些注释 表明一个文件主要干的事 每个函数的功能 关键参数的作用 同时对照需求文档更新你的todo 最后如果想要拓展 可以按照你自己的想法拓展功能
+
+[vibecoding经验](https://zcnpvvo6f9jh.feishu.cn/wiki/UT7bwfnAUi5AvMk3Mw2cajRqnEh)
+
+>
+
+因为之前让他大范围的改动代码，感觉他会丢失上下文，导致生成的内容很不对，所以我这样优化的提示词减少了ai幻觉和增加代码质量和精准度，这大大提高了效率和节省了token
+
+你以为这就完了吗？真正颠覆我认知的地方在下面
+
+### 绝杀
+
+我们看到这里有这样一个按钮，这其实是终端
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=OTkxZmQwOWI3NGQ1ODE5YTFlMzEzNWRmNjNjZjBkNWFfMjk3MjkwNjc1ZGUxZTljZmQ1MTBmMTg0ZjU5OTFkYjJfSUQ6NzY1MzE1ODY0MDYxODExNDI0OV8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+我们点击后打开了内置终端
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=OGY1ZjAzNWUxYmU4NTgzYjExYzA4NmYwYjY0NmFhY2VfYmFkNmJmMWU1YzQwYzU2NGM5Yzk4YzVjMzg1ZTMxYzlfSUQ6NzY1MzE1ODg5MTc0Mzc1OTU3MV8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+我们发现，opencode,claude code完全可以在这里使用！弥补了codex目前接国产模型编码能力不足的缺点，同时也加上codex的优点，因为codex可以直接读取终端的内容，这样形成一个完美的闭环！
+
+还没有结束，真正神来之笔的地方在这里
+
+由于我发现Codex其实更具备整体观，我这里直接让分析和代码实现分离让Codex负责分析，opencode负责写实现，这样，一个完整的闭环实现了！
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=ODAyNWFiNWFiZDEwY2NiNTY2YWQxM2U2YTU2NDJjMTVfNThiMjU4MTRlZGQwOTAwODc1NjE5YjFhZGU1YzFkNmVfSUQ6NzY1MzE1OTg5MDEyMjMxMjYzMl8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+这里我在加上我之前得到的经验提示词，一个完整的工作流出现了！
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=ODNkNWQ0MGVkNmM3YzI0ZDNhNzM3ZmYxMjc2MzM2OWVfMjljNGYyYTFjMmRjOTA2YmQ1YjNhMzA5MDRlNWZkZmJfSUQ6NzY1MzE2MDI3NTQ1Mjk1NTYyMV8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+在这样的操作下，大大提高了项目的精准度和代码质量，甚至还减少了token消耗
+
+![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=ODc1NTU4MGJkNzk3YmM1OGZlYTU4YmUwYjMxOWRjMDRfZGVmNzgyZmE2MDExOGRjYzM5ZGNlZjdjOTJkYWFlYjFfSUQ6NzY1MzE2MDQ0MzExNjAzMDk1NF8xNzgxODkzNzQwOjE3ODE5ODAxNDBfVjM)
+
+总之：使用Codex 我的认知在被颠覆\.\.\.\.\.\.
