@@ -7,7 +7,7 @@
 "use client";
 
 import type { Block, BType } from "../types";
-import { createBlock, generateId, setCursorToEnd } from "../utils";
+import { createBlock, generateId, setCursorToEnd, setCursorToStart } from "../utils";
 
 /**
  * 在指定位置后插入新块
@@ -193,6 +193,17 @@ export function mergeDownward(
     const currentBlock = prev[realIndex];
     const nextBlock = prev[realIndex + 1];
     const updated = [...prev];
+
+    // ol/ul/todo 不合并到下一块，直接删除当前块
+    if (["ol", "ul", "todo"].includes(currentBlock.type)) {
+      updated.splice(realIndex, 1);
+      // 聚焦到下一块
+      setTimeout(() => {
+        const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
+        if (el) setCursorToStart(el);
+      }, 10);
+      return updated;
+    }
 
     if (["code", "hr", "img", "table"].includes(nextBlock.type)) {
       updated.splice(realIndex + 1, 1);

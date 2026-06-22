@@ -175,6 +175,15 @@ export function setCursorToEnd(el: HTMLElement) {
   s?.addRange(r);
 }
 
+export function setCursorToStart(el: HTMLElement) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(true);
+  const s = window.getSelection();
+  s?.removeAllRanges();
+  s?.addRange(r);
+}
+
 export function highlightCode(code: string, lang?: string): string {
   if (!code.trim()) return "";
   try {

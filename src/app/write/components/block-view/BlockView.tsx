@@ -387,12 +387,25 @@ export const BlockView: FC<Props> = ({
       }
 
       let atEnd = false;
+      let atStart = false;
       if (sel && sel.rangeCount > 0) {
         const r = sel.getRangeAt(0);
+        // 检查是否在行尾
         const postRange = document.createRange();
         postRange.selectNodeContents(el);
         postRange.setStart(r.endContainer, r.endOffset);
         atEnd = postRange.toString().length === 0;
+        // 检查是否在行首
+        const preRange = document.createRange();
+        preRange.selectNodeContents(el);
+        preRange.setEnd(r.startContainer, r.startOffset);
+        atStart = preRange.toString().length === 0;
+      }
+      // Delete在行首：等同于Backspace行首，合并到上一块
+      if (atStart && !atEnd) {
+        e.preventDefault();
+        onBackspace(el.innerHTML || "");
+        return;
       }
       if (atEnd) { e.preventDefault(); onDeleteDown?.(); return; }
     }
