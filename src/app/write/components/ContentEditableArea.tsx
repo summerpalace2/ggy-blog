@@ -46,8 +46,7 @@ export const ContentEditableArea: FC<Props> = ({
     if (!ref.current) return;
     if (newHtml !== prevHtml.current) {
       // 跳过内部更新（由BlockView的Enter/Backspace等主动修改的DOM）
-      if (isInternalUpdate.current || (ref.current as any).__internalUpdate) {
-        (ref.current as any).__internalUpdate = false;
+      if (isInternalUpdate.current) {
         prevHtml.current = newHtml;
         return;
       }
@@ -73,7 +72,7 @@ export const ContentEditableArea: FC<Props> = ({
     syncToDom(html);
   }, [html]);
 
-  /** 用户输入处理：300ms防抖后上报 */
+  /** 用户输入处理：50ms短防抖后上报（减少竞态问题） */
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
     const newHtml = (e.currentTarget as HTMLDivElement).innerHTML;
     pendingHtml.current = newHtml;
@@ -87,7 +86,7 @@ export const ContentEditableArea: FC<Props> = ({
         onChange(pending);
       }
       pendingHtml.current = null;
-    }, 300);
+    }, 50);
   };
 
   /** 失焦时立即提交未上报的内容 */

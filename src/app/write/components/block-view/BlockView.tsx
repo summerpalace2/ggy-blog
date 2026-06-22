@@ -249,10 +249,8 @@ export const BlockView: FC<Props> = ({
           }
         }
       } else {
-        // Enter拆分：直接从DOM读取最新内容上报，不比较block.html（可能因防抖而滞后）
+        // Enter拆分：直接从DOM读取最新内容上报
         const currentHtml = el.innerHTML;
-        // 标记内部更新，防止syncToDom覆盖splitHtmlAtCursor的DOM修改
-        (edRef as any).__internalUpdate = true;
         onChange({ ...block, html: currentHtml });
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
