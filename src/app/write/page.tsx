@@ -101,8 +101,8 @@ export default function WritePage() {
     insertAfter(index, type, html, blocks, setBlocks, pushSnapshot);
   }, [blocks, setBlocks, pushSnapshot]);
 
-  const handleSplitBlock = useCallback((id: string, afterHtml: string, type?: BType, fallbackIndex?: number) => {
-    splitBlock(id, afterHtml, type, fallbackIndex, blocks, setBlocks, pushSnapshot);
+  const handleSplitBlock = useCallback((id: string, afterHtml: string, type?: BType, fallbackIndex?: number, keepOrdered?: boolean) => {
+    splitBlock(id, afterHtml, type, fallbackIndex, blocks, setBlocks, pushSnapshot, keepOrdered);
   }, [blocks, setBlocks, pushSnapshot]);
 
   const handleRemoveBlock = useCallback((id: string, index: number) => {
@@ -274,7 +274,7 @@ export default function WritePage() {
             <div key={block.id}>
               <BlockView block={block} index={index}
                 onChange={(b) => { pushSnapshot(); setBlocks((prev) => prev.map((bl) => (bl.id === b.id ? b : bl))); }}
-                onEnter={(html, type) => handleSplitBlock(block.id, html, type, index)}
+                onEnter={(html, type, fallbackIdx, keepOrdered) => handleSplitBlock(block.id, html, type, fallbackIdx, keepOrdered)}
                 onDelete={() => handleRemoveBlock(block.id, index)}
                 _onInsertAfter={(type) => handleInsertAfter(index, type, "")}
                 onPasteImg={async (file) => handlePasteImage(file, index, blocks, setBlocks)}

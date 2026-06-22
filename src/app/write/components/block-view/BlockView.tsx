@@ -22,7 +22,7 @@ interface Props {
   block: Block;
   index: number;
   onChange: (b: Block) => void;
-  onEnter: (html: string, type?: BType, fallbackIndex?: number) => void;
+  onEnter: (html: string, type?: BType, fallbackIndex?: number, keepOrdered?: boolean) => void;
   onDelete: () => void;
   _onInsertAfter?: (type: BType) => void;
   onPasteImg: (file: File) => void;
@@ -225,7 +225,7 @@ export const BlockView: FC<Props> = ({
           setTimeout(() => edRef.current?.focus(), 0);
         } else if (block.type === "ol") {
           // 有序列表空行→延续下一个有序项
-          onEnter("", "ol", index);
+          onEnter("", "ol", index, false);
         } else {
           // 其他列表（ul/todo）空行→退为段落
           const exitType = ["ul", "todo"].includes(block.type) ? "p" : block.type;
@@ -233,7 +233,7 @@ export const BlockView: FC<Props> = ({
             onChange({ ...block, type: exitType });
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
-            onEnter("", exitType, index);
+            onEnter("", exitType, index, false);
           }
         }
       } else {
@@ -257,23 +257,25 @@ export const BlockView: FC<Props> = ({
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
             // 有序块有内容：新生成的块转为ol类型以继承编号
-            onEnter("", "ol", index);
+            onEnter("", "ol", index, false);
           }
         } else if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
           // 普通列表块（非ordered覆盖层）
-          onEnter("", block.type, index);
+          onEnter("", block.type, index, false);
         } else {
           // 非空行Enter拆分：检查当前块是否为有序覆盖层
           const shortcut = detectMarkdownShortcut(afterText);
           const baseType = shortcut ? shortcut.type : block.type;
           let newType: BType;
-          // 有序覆盖层Enter：新生成的块转为ol以继承编号（ol自带编号显示）
+          let keepOrdered = false;
+          // 有序覆盖层Enter：保持同类型+ordered，编号继续
           if (block.ordered) {
-            newType = "ol";
+            newType = baseType;
+            keepOrdered = true;
           } else {
             newType = baseType;
           }
-          onEnter(splitResult.after, newType, index);
+          onEnter(splitResult.after, newType, index, keepOrdered);
         }
       }
       setTimeout(() => { processingEnter.current = false; }, 50);

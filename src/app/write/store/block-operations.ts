@@ -44,16 +44,18 @@ export function insertAfter(
  * @param fallbackIndex - 快速Enter的兜底索引
  * @param blocks - 当前块列表
  * @param setBlocks - 状态更新函数
+ * @param keepOrdered - 新块是否保持ordered属性（用于有序标题/段落Enter后仍生成有序块）
  */
 export function splitBlock(
   id: string, afterHtml: string, blockType: BType | undefined, fallbackIndex: number | undefined,
   blocks: Block[], setBlocks: React.Dispatch<React.SetStateAction<Block[]>>,
-  pushSnapshot: () => void,
+  pushSnapshot: () => void, keepOrdered?: boolean,
 ) {
   const inheritTypes = ["ol", "ul", "todo"];
   const newType: BType = inheritTypes.includes(blockType || "") ? (blockType || "p") : "p";
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
+  if (keepOrdered) newBlock.ordered = true;
   pushSnapshot();
   setBlocks((prev) => {
     let index = prev.findIndex((b) => b.id === id);
@@ -130,13 +132,15 @@ export function mergeUpward(
     // 空行删除
     if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
       if (prev.length <= 1) return prev; // 保留最后一个块
+      // ol/ul/todo 空行：直接删除（BlockView已处理过，不会到这里）
       if (["ol", "ul", "todo"].includes(currentBlock.type)) {
-        // 列表空行：第一次转段落，第二次删
-        updated[realIndex] = { ...currentBlock, type: "p", html: "" };
+        updated.splice(realIndex, 1);
+        const focusIndex = Math.max(0, realIndex - 1);
+        const targetId = updated[focusIndex]?.id;
         setTimeout(() => {
-          const el = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+          const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
           if (el) setCursorToEnd(el);
-        }, 10);
+        }, 0);
         return updated;
       }
       updated.splice(realIndex, 1);
