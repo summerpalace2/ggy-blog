@@ -88,7 +88,10 @@ export function removeBlock(
 ) {
   pushSnapshot();
   setBlocks((prev) => {
-    if (prev.length <= 1) return prev;
+    if (prev.length <= 1) {
+      // 最后一个块：转为空段落，防止编辑器空白
+      return [createBlock("p", "")];
+    }
     const updated = prev.filter((b) => b.id !== id);
     setTimeout(() => {
       const focusIndex = Math.min(index, updated.length - 1);
