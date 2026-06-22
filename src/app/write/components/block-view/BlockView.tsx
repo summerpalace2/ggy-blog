@@ -218,13 +218,17 @@ export const BlockView: FC<Props> = ({
       const splitResult = splitHtmlAtCursor(el);
 
       if (!splitResult.before && !splitResult.after) {
-        // 光标在空行按Enter：列表空行→当前块退为段落，不新建块
-        // 有序覆盖层空行→脱ordered，不新建块
+        // 光标在行首/行尾按Enter：有序列表延续，其他列表退为段落
         if (block.ordered) {
+          // 有序覆盖层空行→脱ordered，不新建块
           onChange({ ...block, ordered: undefined });
           setTimeout(() => edRef.current?.focus(), 0);
+        } else if (block.type === "ol") {
+          // 有序列表空行→延续下一个有序项
+          onEnter("", "ol", index);
         } else {
-          const exitType = ["ol", "ul", "todo"].includes(block.type) ? "p" : block.type;
+          // 其他列表（ul/todo）空行→退为段落
+          const exitType = ["ul", "todo"].includes(block.type) ? "p" : block.type;
           if (exitType !== block.type) {
             onChange({ ...block, type: exitType });
             setTimeout(() => edRef.current?.focus(), 0);
