@@ -1,26 +1,11 @@
 import { notFound } from "next/navigation";
 import { getPostBySlug, getAllPosts } from "@/lib/posts";
-import { PostBody } from "@/components/PostBody";
-import { Comments } from "@/components/Comments";
 import Link from "next/link";
-import type { Metadata } from "next";
+import { PostBody } from "@/components/PostBody";
 
-function formatDate(iso: string) {
-  try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return iso || "";
-    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
-  } catch { return iso || ""; }
-}
+export const dynamic = "force-dynamic";
 
 interface Props { params: Promise<{ slug: string }>; }
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const post = await getPostBySlug(slug);
-  if (!post) return {};
-  return { title: post.meta.title + " - GGY 的博客", description: post.meta.description };
-}
 
 export default async function PostPage({ params }: Props) {
   const { slug } = await params;
@@ -45,14 +30,12 @@ export default async function PostPage({ params }: Props) {
               <span className="cat-dot" style={{ backgroundColor: post.meta.category === "tech" ? "var(--accent)" : post.meta.category === "life" ? "var(--accent-warm)" : "var(--accent)" }} />
               {post.meta.category === "tech" ? "技术" : post.meta.category === "life" ? "随笔" : post.meta.category}
             </span>
-            <span className="font-sans text-xs" style={{ color: "var(--text-muted)" }}>{formatDate(post.meta.date)}</span>
+            <span className="font-sans text-xs" style={{ color: "var(--text-muted)" }}>{post.meta.date}</span>
           </div>
           <h1 className="font-sans text-3xl font-bold mb-4 leading-tight">{post.meta.title}</h1>
         </header>
         <PostBody content={post.content} />
       </article>
-
-      <Comments slug={post.meta.slug} />
 
       <div className="mt-16 pt-8 border-t flex justify-between gap-6" style={{ borderColor: "var(--border-light)" }}>
         <div className="flex-1 min-w-0">
