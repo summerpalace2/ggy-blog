@@ -9,7 +9,7 @@
 import { useState, useRef, useEffect, type FC } from "react";
 import type { Block, BType } from "../../types";
 import {
-  ContentEditableArea,
+  ContentEditableArea, flushContentEditable,
 } from "../ContentEditableArea";
 import { TypePicker } from "../TypePicker";
 import {
@@ -214,18 +214,14 @@ export const BlockView: FC<Props> = ({
       processingEnter.current = true;
       e.preventDefault();
       const el = edRef.current; if (!el) return;
-      void window.getSelection();
+      // Enter前立即提交防抖中的内容，确保DOM和state同步
+      flushContentEditable(edRef);
       const splitResult = splitHtmlAtCursor(el);
 
       if (!splitResult.before && !splitResult.after) {
         // 光标在行首/行尾按Enter
         // 区分：块本身为空 vs 块有内容但光标在行首/尾
         const isBlockEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
-        // 有序覆盖层空块→脱ordered，不新建
-        // 有序覆盖层有内容但光标在行首/尾→延续下一个有序块
-        // 有序列表空块→延续下一个有序项
-        // 有序列表有内容但光标在行首/尾→延续下一个有序项
-        // 无序列表→退为段落
         if (block.ordered) {
           if (isBlockEmpty) {
             // 有序覆盖层空块→脱ordered
@@ -236,8 +232,14 @@ export const BlockView: FC<Props> = ({
           }
           setTimeout(() => edRef.current?.focus(), 0);
         } else if (block.type === "ol") {
-          // 有序列表→延续下一个有序项
-          onEnter("", "ol", index, false);
+          // 有序列表空块→退为段落（退出有序列表）
+          // 有序列表有内容→延续下一个有序项
+          if (isBlockEmpty) {
+            onChange({ ...block, type: "p" });
+          } else {
+            onEnter("", "ol", index, false);
+          }
+          setTimeout(() => edRef.current?.focus(), 0);
         } else {
           // 其他列表（ul/todo）空行→退为段落
           const exitType = ["ul", "todo"].includes(block.type) ? "p" : block.type;
@@ -249,9 +251,10 @@ export const BlockView: FC<Props> = ({
           }
         }
       } else {
-        // 通知父组件更新html（仅在内容变化时才触发）
-        if (splitResult.before !== block.html) {
-          onChange({ ...block, html: splitResult.before });
+        // Enter拆分：直接从DOM读取最新内容上报，不依赖可能有防抖的block.html
+        const currentHtml = el.innerHTML;
+        if (currentHtml !== block.html) {
+          onChange({ ...block, html: currentHtml });
         }
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落

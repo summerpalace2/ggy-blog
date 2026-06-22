@@ -148,3 +148,10 @@ export const ContentEditableArea: FC<Props> = ({
     />
   );
 };
+
+/** 强制提交防抖中的未上报内容 */
+export function flushContentEditable(ref: React.RefObject<HTMLDivElement | null>) {
+  if (!ref?.current) return;
+  // 触发blur事件来调用flushDebounce
+  ref.current.dispatchEvent(new Event('blur', { bubbles: true }));
+};
