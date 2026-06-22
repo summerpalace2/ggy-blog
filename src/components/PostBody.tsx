@@ -12,11 +12,9 @@ export function PostBody({ content }: { content: string }) {
         remarkPlugins={[remarkGfm]}
         urlTransform={(url) => url}
         components={{
-          img: ({ src, alt }) => {
+          img: ({ src, alt }: any) => {
             if (!src) return null;
-            return (
-              <img src={src} alt={alt || ""} loading="lazy" style={{ maxWidth: "100%", borderRadius: 8 }} />
-            );
+            return <img src={src} alt={alt || ""} loading="lazy" style={{ maxWidth: "100%", borderRadius: 8 }} />;
           },
         }}
       >

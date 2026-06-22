@@ -20,15 +20,25 @@ export interface PostMeta {
 function rowToMeta(r: any): PostMeta {
   let tags: string[] = [];
   try {
-    if (r.tags) {
-      tags = typeof r.tags === "string" ? JSON.parse(r.tags) : Array.isArray(r.tags) ? r.tags : [];
+    const raw = r.tags;
+    if (raw) {
+      if (typeof raw === "string") { tags = JSON.parse(raw); }
+      else if (Array.isArray(raw)) { tags = raw.map((t: any) => String(t)); }
     }
   } catch { tags = []; }
+  let dateStr = "";
+  try {
+    const d = r.created_at ? new Date(r.created_at) : null;
+    dateStr = d && !isNaN(d.getTime()) ? d.toISOString() : "";
+  } catch { dateStr = ""; }
   return {
-    slug: r.slug || "", title: r.title || "",
-    date: r.created_at ? new Date(r.created_at).toISOString() : "",
+    slug: String(r.slug || ""),
+    title: String(r.title || ""),
+    date: dateStr,
     tags,
-    category: r.category || "", description: r.description || "", published: !!r.published,
+    category: String(r.category || ""),
+    description: String(r.description || ""),
+    published: !!r.published,
   };
 }
 
@@ -40,10 +50,10 @@ export async function getAllPosts(): Promise<PostMeta[]> {
 
 export async function getPostBySlug(slug: string): Promise<{ meta: PostMeta; content: string } | null> {
   const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
-  const rows = await query("SELECT * FROM posts WHERE slug = ? AND published = 1 LIMIT 1", [decoded]);
+  const rows = await query("SELECT slug, title, created_at, tags, category, description, published, content FROM posts WHERE slug = ? AND published = 1 LIMIT 1", [decoded]);
   if (rows.length === 0) return null;
   const r = rows[0];
-  const content = typeof r.content === "string" ? r.content : String(r.content || "");
+  const content = r.content ? String(r.content) : "";
   return { meta: rowToMeta(r), content };
 }
 

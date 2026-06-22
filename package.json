@@ -12,10 +12,11 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cardinal": "^2.1.1",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
-    "mysql2": "^2.3.3",
+    "mysql2": "^3.22.5",
     "next": "^15.5.0",
     "next-auth": "^4.24.14",
     "react": "^19.0.0",
