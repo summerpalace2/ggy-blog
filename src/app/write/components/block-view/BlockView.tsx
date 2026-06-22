@@ -214,8 +214,6 @@ export const BlockView: FC<Props> = ({
       processingEnter.current = true;
       e.preventDefault();
       const el = edRef.current; if (!el) return;
-      // Enter前立即提交防抖中的内容，确保DOM和state同步
-      flushContentEditable(edRef);
       const splitResult = splitHtmlAtCursor(el);
 
       if (!splitResult.before && !splitResult.after) {
@@ -251,11 +249,11 @@ export const BlockView: FC<Props> = ({
           }
         }
       } else {
-        // Enter拆分：直接从DOM读取最新内容上报，不依赖可能有防抖的block.html
+        // Enter拆分：直接从DOM读取最新内容上报，不比较block.html（可能因防抖而滞后）
         const currentHtml = el.innerHTML;
-        if (currentHtml !== block.html) {
-          onChange({ ...block, html: currentHtml });
-        }
+        // 标记内部更新，防止syncToDom覆盖splitHtmlAtCursor的DOM修改
+        (edRef as any).__internalUpdate = true;
+        onChange({ ...block, html: currentHtml });
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
         // 有序覆盖层（ordered标题/段落）也按同样逻辑处理

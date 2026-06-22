@@ -45,6 +45,12 @@ export const ContentEditableArea: FC<Props> = ({
   const syncToDom = (newHtml: string) => {
     if (!ref.current) return;
     if (newHtml !== prevHtml.current) {
+      // 跳过内部更新（由BlockView的Enter/Backspace等主动修改的DOM）
+      if (isInternalUpdate.current || (ref.current as any).__internalUpdate) {
+        (ref.current as any).__internalUpdate = false;
+        prevHtml.current = newHtml;
+        return;
+      }
       if (ref.current.innerHTML !== newHtml) {
         ref.current.innerHTML = newHtml;
       }

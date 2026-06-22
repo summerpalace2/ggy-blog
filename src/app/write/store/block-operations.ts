@@ -209,8 +209,13 @@ export function mergeDownward(
       updated.splice(realIndex + 1, 1);
       return updated;
     }
-    if (nextBlock.html) {
-      updated[realIndex] = { ...currentBlock, html: currentBlock.html + nextBlock.html };
+    // 从DOM读取最新内容（防止防抖导致state滞后）
+    const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+    const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
+    const currentHtml = currentEl?.innerHTML || currentBlock.html;
+    const nextHtml = nextEl?.innerHTML || nextBlock.html;
+    if (nextHtml) {
+      updated[realIndex] = { ...currentBlock, html: currentHtml + nextHtml };
     }
     updated.splice(realIndex + 1, 1);
     setTimeout(() => {
