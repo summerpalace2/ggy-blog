@@ -52,7 +52,8 @@ export function splitBlock(
   pushSnapshot: () => void, keepOrdered?: boolean,
 ) {
   const inheritTypes = ["ol", "ul", "todo"];
-  const newType: BType = inheritTypes.includes(blockType || "") ? (blockType || "p") : "p";
+  // keepOrdered时不降级类型，保持原类型+ordered
+  const newType: BType = keepOrdered ? (blockType || "p") : (inheritTypes.includes(blockType || "") ? (blockType || "p") : "p");
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
   if (keepOrdered) newBlock.ordered = true;

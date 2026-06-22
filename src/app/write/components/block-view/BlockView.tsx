@@ -218,13 +218,25 @@ export const BlockView: FC<Props> = ({
       const splitResult = splitHtmlAtCursor(el);
 
       if (!splitResult.before && !splitResult.after) {
-        // 光标在行首/行尾按Enter：有序列表延续，其他列表退为段落
+        // 光标在行首/行尾按Enter
+        // 区分：块本身为空 vs 块有内容但光标在行首/尾
+        const isBlockEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
+        // 有序覆盖层空块→脱ordered，不新建
+        // 有序覆盖层有内容但光标在行首/尾→延续下一个有序块
+        // 有序列表空块→延续下一个有序项
+        // 有序列表有内容但光标在行首/尾→延续下一个有序项
+        // 无序列表→退为段落
         if (block.ordered) {
-          // 有序覆盖层空行→脱ordered，不新建块
-          onChange({ ...block, ordered: undefined });
+          if (isBlockEmpty) {
+            // 有序覆盖层空块→脱ordered
+            onChange({ ...block, ordered: undefined });
+          } else {
+            // 有序覆盖层有内容→延续下一个有序块
+            onEnter("", block.type as BType, index, true);
+          }
           setTimeout(() => edRef.current?.focus(), 0);
         } else if (block.type === "ol") {
-          // 有序列表空行→延续下一个有序项
+          // 有序列表→延续下一个有序项
           onEnter("", "ol", index, false);
         } else {
           // 其他列表（ul/todo）空行→退为段落
