@@ -11,10 +11,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "gray-matter": "^4.0.3",
     "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
+    "mysql2": "^2.3.3",
     "next": "^15.5.0",
+    "next-auth": "^4.24.14",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
@@ -27,6 +30,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
+    "@types/bcryptjs": "^2.4.6",
     "@types/katex": "^0.16.8",
     "@types/node": "^20",
     "@types/react": "^19",

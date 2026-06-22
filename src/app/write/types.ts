@@ -17,6 +17,10 @@ export interface Block {
   toggleContent?: string;
   imgWidth?: number;
   restartNumbering?: boolean;
+  sideImage?: string;
+  sideImgWidth?: number;
+  ordered?: boolean;
+  formulaDisplay?: boolean;
 }
 
 /** 撤销快照 */

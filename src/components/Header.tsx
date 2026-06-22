@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
+  const { data: session } = useSession();
+
   return (
     <header
       className="fixed top-0 left-0 right-0 z-50"
@@ -19,9 +24,21 @@ export function Header() {
           </Link>
           <div className="flex items-center gap-1">
             <Link href="/blog" className="btn-ghost text-xs sm:text-sm">首页</Link>
-            <Link href="/tags" className="btn-ghost text-xs sm:text-sm">标签</Link>
+            <Link href="/category" className="btn-ghost text-xs sm:text-sm">分类</Link>
             <Link href="/about" className="btn-ghost text-xs sm:text-sm">关于</Link>
-            <Link href="/write" className="btn-ghost text-xs sm:text-sm">写文章</Link>
+            {session?.user?.role === "admin" && (
+              <>
+                <Link href="/write" className="btn-ghost text-xs sm:text-sm">写文章</Link>
+                <Link href="/admin" className="btn-ghost text-xs sm:text-sm">管理</Link>
+              </>
+            )}
+            {session ? (
+              <button onClick={() => signOut({ callbackUrl: "/blog" })} className="btn-ghost text-xs sm:text-sm">
+                {session.user?.name} ▾
+              </button>
+            ) : (
+              <Link href="/login" className="btn-ghost text-xs sm:text-sm">登录</Link>
+            )}
           </div>
         </div>
         <ThemeToggle />

@@ -23,6 +23,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import hljs from "highlight.js";
 import katex from "katex";
 
@@ -45,6 +46,10 @@ interface Block {
   toggleContent?: string;                   // toggle 折叠内容
   imgWidth?: number;                        // 图片宽度百分比，默认100
   restartNumbering?: boolean;               // ol块：是否重新开始编号（手动控制）
+  sideImage?: string;                       // 拖入图片→双栏布局的图片data URL
+  sideImgWidth?: number;                    // 双栏图片宽度百分比
+  ordered?: boolean;                        // 标题/段落叠加有序列表编号；false=取消叠加
+  formulaDisplay?: boolean;                 // 公式块级/行内模式；默认true=块级
 }
 
 /** 撤销快照 */
@@ -60,15 +65,11 @@ interface Snapshot {
 // ═══════════════════════════════════════════════════════════════
 
 
-let _idCounter = 0; // SSR回退计数器
-/** 生成唯一块ID——计数器挂在window上防热重载重置 */
+/** 生成唯一块ID——基于时间戳+随机数，确保Fast Refresh下不重复 */
 const generateId = (): string => {
-  if (typeof window !== "undefined") {
-    const w = window as any;
-    w.__bid = (w.__bid || 0) + 1;
-    return "b" + w.__bid.toString(36);
-  }
-  return "b" + (++_idCounter).toString(36).padStart(3, "0");
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return "b" + ts + rand;
 };
 
 /** 创建新块 */
@@ -112,6 +113,8 @@ function blocksToMarkdown(blocks: Block[]): string {
       case "h1": return "# " + text;
       case "h2": return "## " + text;
       case "h3": return "### " + text;
+      case "h4": return "#### " + text;
+      case "h5": return "##### " + text;
       case "hr": return "---";
       case "code": return "```" + (block.lang || "") + "\n" + (block.html || "") + "\n```";
       case "quote": return "> " + text;
@@ -194,6 +197,16 @@ function markdownToBlocks(raw: string): Block[] {
     if (firstLine.startsWith("### ")) {
       const content = firstLine.slice(4) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "");
       blocks.push(createBlock("h3", parseInline(content)));
+      cursor++; continue;
+    }
+    if (firstLine.startsWith("#### ")) {
+      const content = firstLine.slice(5) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "");
+      blocks.push(createBlock("h4", parseInline(content)));
+      cursor++; continue;
+    }
+    if (firstLine.startsWith("##### ")) {
+      const content = firstLine.slice(6) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "");
+      blocks.push(createBlock("h5", parseInline(content)));
       cursor++; continue;
     }
 
@@ -330,6 +343,15 @@ function setCursorToEnd(el: HTMLElement) {
   const r = document.createRange();
   r.selectNodeContents(el);
   r.collapse(false);
+  const s = window.getSelection();
+  s?.removeAllRanges();
+  s?.addRange(r);
+}
+
+function setCursorToStart(el: HTMLElement) {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  r.collapse(true);
   const s = window.getSelection();
   s?.removeAllRanges();
   s?.addRange(r);
@@ -491,6 +513,15 @@ function ContentEditableArea({ html, onChange, onKeyDown, onPasteImg, onDropImg,
   }, []);
 
   // 外部html变化时同步到DOM（跳过内部触发的更新）
+  const syncToDom = (newHtml: string) => {
+    if (!ref.current) return;
+    if (newHtml !== prevHtml.current) {
+      if (ref.current.innerHTML !== newHtml) {
+        ref.current.innerHTML = newHtml;
+      }
+      prevHtml.current = newHtml;
+    }
+  };
   useEffect(() => {
     if (isInternalUpdate.current) {
       isInternalUpdate.current = false;
@@ -502,10 +533,7 @@ function ContentEditableArea({ html, onChange, onKeyDown, onPasteImg, onDropImg,
       debounceTimer.current = null;
       pendingHtml.current = null;
     }
-    if (ref.current && html !== prevHtml.current) {
-      ref.current.innerHTML = html;
-      prevHtml.current = html;
-    }
+    syncToDom(html);
   }, [html]);
 
   /** 用户输入处理：300ms防抖后上报 */
@@ -686,8 +714,8 @@ function FormatToolbar({ onInsertLink }: { onInsertLink?: () => void }) {
 //  类型选择弹窗（+按钮和/命令共用）
 // ═══════════════════════════════════════════════════════════════
 
-function TypePicker({ open, position, onSelect, onClose, currentType }: {
-  open: boolean; position: { x: number; y: number }; onSelect: (t: BType) => void; onClose: () => void; currentType?: BType;
+function TypePicker({ open, position, onSelect, onClose, currentType, ordered }: {
+  open: boolean; position: { x: number; y: number }; onSelect: (t: BType) => void; onClose: () => void; currentType?: BType; ordered?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -712,7 +740,9 @@ function TypePicker({ open, position, onSelect, onClose, currentType }: {
       <div className="fixed z-[99] w-64 rounded-xl border shadow-lg overflow-hidden"
         style={{
           left: Math.min(position.x, window.innerWidth - 280),
-          top: Math.min(position.y, window.innerHeight - 440),
+          ...(position.y > window.innerHeight / 2
+            ? { bottom: window.innerHeight - position.y + 8 }
+            : { top: Math.min(position.y, window.innerHeight - 440) }),
           backgroundColor: "var(--bg-card)", borderColor: "var(--border)",
         }}>
         {/* 搜索框 */}
@@ -726,8 +756,8 @@ function TypePicker({ open, position, onSelect, onClose, currentType }: {
           {filtered.map((t) => (
             <button key={t.type} onMouseDown={(e) => { e.preventDefault(); onSelect(t.type); }}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--bg-subtle)]"
-              style={{ color: "var(--text)", backgroundColor: t.type === currentType ? "var(--bg-subtle)" : "transparent" }}>
-              {t.type === currentType && <span style={{ color: "var(--accent)", fontSize: 10, marginRight: -4 }}>✓</span>}
+              style={{ color: "var(--text)", backgroundColor: (t.type === currentType || (t.type === "ol" && ordered)) ? "var(--bg-subtle)" : "transparent" }}>
+              {(t.type === currentType || (t.type === "ol" && ordered)) && <span style={{ color: "var(--accent)", fontSize: 10, marginRight: -4 }}>✓</span>}
               <span className="w-7 h-7 flex items-center justify-center rounded-md text-xs font-bold"
                 style={{ backgroundColor: "var(--bg-subtle)", color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
                 {t.icon}
@@ -765,10 +795,19 @@ function FloatingTOC({ blocks }: { blocks: Block[] }) {
     return () => observer.disconnect();
   }, [blocks]);
 
-  // 提取所有标题块（H1/H2/H3）
-  const tocItems = blocks
-    .filter((b) => ["h1", "h2", "h3", "h4", "h5"].includes(b.type))
-    .map((b) => ({ id: b.id, level: Number(b.type[1]), text: htmlToMarkdown(b.html) || "无标题" }));
+  // 提取所有标题块，计算高维有序编号
+  const tocItems: { id: string; level: number; text: string }[] = [];
+  const cnt = [0, 0, 0, 0, 0]; // h1~h5 计数器
+  for (const b of blocks) {
+    if (!["h1", "h2", "h3", "h4", "h5"].includes(b.type)) continue;
+    const lv = parseInt(b.type.charAt(1)) - 1;
+    // 更低级标题归零
+    for (let i = lv + 1; i < 5; i++) cnt[i] = 0;
+    if (b.restartNumbering) cnt[lv] = 0;
+    if (b.ordered) cnt[lv]++;
+    const prefix = b.ordered ? `${cnt[lv]}. ` : "";
+    tocItems.push({ id: b.id, level: lv + 1, text: prefix + (htmlToMarkdown(b.html) || "无标题") });
+  }
 
   return (
     <div className="fixed left-[max(0px,calc((100vw-1100px)/2-220px))] top-24 w-52" style={{ zIndex: 10 }}>
@@ -957,9 +996,9 @@ function ImportDialog({ open, onClose, onImport }: { open: boolean; onClose: () 
  * 单个Block的渲染组件
  * 包含左侧操作区（类型切换按钮）、内容区、TypePicker弹窗、链接浮窗
  */
-function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, onPasteImg, onBackspace, onDeleteDown, olNumber, allBlocks }: {
+function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, onPasteImg, onDropImg, onBackspace, onDeleteDown, olNumber, allBlocks }: {
   block: Block; index: number; onChange: (b: Block) => void; onEnter: (html: string, type?: BType, fallbackIndex?: number) => void;
-  onDelete: () => void; onInsertAfter: (type: BType) => void; onPasteImg: (file: File) => void;
+  onDelete: () => void; onInsertAfter: (type: BType) => void; onPasteImg: (file: File) => void; onDropImg: (file: File) => void;
   onBackspace: (content: string) => void; onDeleteDown?: () => void; olNumber?: number; allBlocks?: Block[];
 }) {
   // ── 状态与引用 ──
@@ -968,8 +1007,21 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 });
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+  const [sideImgError, setSideImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [block.html]);
+  useEffect(() => { setSideImgError(false); }, [block.sideImage]);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [olMenu, setOlMenu] = useState(false);
+  useEffect(() => {
+    if (!olMenu) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest(".ol-popup")) setOlMenu(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [olMenu]);
   const plusRef = useRef<HTMLButtonElement>(null);
   const typeRef = useRef<HTMLButtonElement>(null);
   const [gutterHovered, setGutterHovered] = useState(false);
@@ -981,6 +1033,8 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
   // 图片缩放相关
   const imgRef = useRef<HTMLImageElement>(null);
   const imgDragRef = useRef<{ startX: number; startW: number; imgLeft: number; imgWidth: number } | null>(null);
+  const sideImgRef = useRef<HTMLImageElement>(null);
+  const sideImgDragRef = useRef<{ startX: number; startW: number; imgWidth: number } | null>(null);
   const isComposing = useRef(false);
   const processingEnter = useRef(false);
 
@@ -1024,7 +1078,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
       if (linkHideRef.current) { clearTimeout(linkHideRef.current); linkHideRef.current = null; }
       if (!linkTimerRef.current) {
         linkTimerRef.current = setTimeout(() => {
-          setLinkPopup({ x: a.getBoundingClientRect().left, y: a.getBoundingClientRect().bottom + 4, url: href, text: a.textContent || href });
+          setLinkPopup({ x: a.getBoundingClientRect().left, y: a.getBoundingClientRect().top - 4, url: href, text: a.textContent || href });
           a.style.backgroundColor = "color-mix(in srgb, var(--accent) 10%, transparent)";
           a.style.borderRadius = "2px";
           linkTimerRef.current = null;
@@ -1059,7 +1113,16 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
   };
   const handlePickerSelect = (type: BType) => {
     setShowPicker(false);
-    onChange({ ...block, type, html: block.html });
+    // 有序列表作为覆盖层：标题/正文选中ol→叠加ordered，非标题→切换为ol
+    if (type === "ol") {
+      if (["h1", "h2", "h3", "h4", "h5", "p"].includes(block.type)) {
+        onChange({ ...block, ordered: !block.ordered });
+      } else {
+        onChange({ ...block, type: "ol", html: block.html });
+      }
+    } else {
+      onChange({ ...block, type, html: block.html, ordered: undefined });
+    }
     setTimeout(() => edRef.current?.focus(), 10);
   };
 
@@ -1068,6 +1131,11 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
     const dataUrl = await readFileAsDataUrl(file);
     if (block.type === "img") { onChange({ ...block, html: imageBlockHtml(dataUrl, file.name) }); }
     else { onPasteImg(file); }
+  };
+
+  const handleDropFile = async (file: File) => {
+    if (block.type === "img") { onChange({ ...block, html: imageBlockHtml(await readFileAsDataUrl(file), file.name) }); }
+    else { onDropImg(file); }
   };
 
   // ── 键盘事件处理（核心交互逻辑）──
@@ -1094,7 +1162,18 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
 
     // Enter：拆分块（代码块、折叠、公式、嵌入不支持拆分）
     const unsplittableTypes = ["code", "toggle", "formula", "embed", "quote"];
-    if (e.key === "Enter" && !e.shiftKey && !unsplittableTypes.includes(block.type)) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // 双栏布局（有sideImage）的文本块：Enter只换行，不拆分
+      if (block.sideImage) {
+        e.preventDefault();
+        document.execCommand("insertLineBreak");
+        return;
+      }
+      if (unsplittableTypes.includes(block.type)) {
+        // 公式块：Enter插入换行，不拆分
+        if (block.type === "formula") { e.preventDefault(); document.execCommand("insertLineBreak"); }
+        return;
+      }
       if (isComposing.current || processingEnter.current) return;
       processingEnter.current = true;
       e.preventDefault();
@@ -1112,7 +1191,15 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
           onEnter("", exitType, index);
         }
       } else {
-        onChange({ ...block, html: splitResult.before });
+        // 通知父组件更新html（仅在内容变化时才触发）
+        if (splitResult.before !== block.html) {
+          onChange({ ...block, html: splitResult.before });
+          // 恢复光标：useEffect覆写innerHTML会破坏选区，RAF后补回
+          requestAnimationFrame(() => {
+            const el = edRef.current;
+            if (el) setCursorToEnd(el);
+          });
+        }
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
         if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
@@ -1166,6 +1253,13 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
       if (atStart) {
         e.preventDefault();
 
+        // 有序覆盖层：先脱ordered，再走标题/列表降级
+        if (block.ordered && block.html.replace(/<[^>]+>/g, "").trim()) {
+          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+          setTimeout(() => edRef.current?.focus(), 0);
+          return;
+        }
+
         // 标题：空标题→直接删除，有内容→退化为正文
         if (["h1", "h2", "h3", "h4", "h5"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
@@ -1180,6 +1274,17 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
         // 引用：有文字→正常删字符，空白→删框
         if (block.type === "quote" && block.html.replace(/<[^>]+>/g, "").trim()) {
           return; // 让浏览器正常删字符
+        }
+
+        // 有序/无序/待办列表：有内容→先降为段落，再Backspace合并到上一段
+        if (["ol", "ul", "todo"].includes(block.type)) {
+          if (!block.html.replace(/<[^>]+>/g, "").trim()) {
+            onBackspace(edEl.innerHTML || "");
+          } else {
+            onChange({ ...block, type: "p" });
+            setTimeout(() => edRef.current?.focus(), 0);
+          }
+          return;
         }
 
         // 标题降级后的段落：直接删除，不向上合并
@@ -1275,7 +1380,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
               <code dangerouslySetInnerHTML={{ __html: linedHtml || `<span class="line">&nbsp;</span>` }} />
             </pre>
             <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
               className="relative px-4 py-3 font-mono text-sm leading-relaxed outline-none"
               style={{ color: "transparent", caretColor: "var(--accent)", backgroundColor: "transparent", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 100 }}
@@ -1312,32 +1417,40 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
         <div className="space-y-2" tabIndex={0}
           onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onBackspace(""); } }}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
-          <div className="flex items-center gap-3 py-2">
-            <span className="text-lg shrink-0">🖼</span>
-            <input type="text" value={imgUrl && !imgUrl.startsWith("data:") ? imgUrl : ""}
-              onChange={(e) => { const url = e.target.value.trim(); if (url) onChange({ ...block, html: imageBlockHtml(url, "图片") }); }}
-              onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !imgUrl) { e.preventDefault(); onBackspace(""); } }}
-              onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-              className="flex-1 font-sans text-sm outline-none"
-              style={{ backgroundColor: "transparent", color: "var(--text)", caretColor: "var(--accent)" }} placeholder="输入图片URL" />
-          </div>
           {!imgUrl ? (
-            <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer"
-              style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)" }}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={async (e) => { e.preventDefault(); const file = e.dataTransfer?.files?.[0]; if (file && file.type.startsWith("image/")) handleImageFile(file); }}
-              onPaste={async (e) => { const items = e.clipboardData?.items; if (!items) return; for (let i = 0; i < items.length; i++) { if (items[i].type.startsWith("image/")) { e.preventDefault(); const file = items[i].getAsFile(); if (file) { handleImageFile(file); } return; } } }}
-              onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { const file = input.files?.[0]; if (file) readFileAsDataUrl(file).then((d) => { onChange({ ...block, html: imageBlockHtml(d, file.name) }); }); }; input.click(); }}>
-              <span className="text-3xl block mb-2">🖼</span>
-              <span className="font-sans text-sm" style={{ color: "var(--text-secondary)" }}>点击/拖拽/粘贴上传</span>
-            </div>
+            <>
+              <div className="flex items-center gap-3 py-2">
+                <span className="text-lg shrink-0">🖼</span>
+                <input type="text" value={imgUrl && !imgUrl.startsWith("data:") ? imgUrl : ""}
+                  onChange={(e) => { const url = e.target.value.trim(); if (url) onChange({ ...block, html: imageBlockHtml(url, "图片") }); }}
+                  onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !imgUrl) { e.preventDefault(); onBackspace(""); } }}
+                  onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                  className="flex-1 font-sans text-sm outline-none"
+                  style={{ backgroundColor: "transparent", color: "var(--text)", caretColor: "var(--accent)" }} placeholder="输入图片URL" />
+              </div>
+              <div className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer"
+                style={{ borderColor: "var(--border)", backgroundColor: "var(--bg-subtle)" }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={async (e) => { e.preventDefault(); const file = e.dataTransfer?.files?.[0]; if (file && file.type.startsWith("image/")) handleImageFile(file); }}
+                onPaste={async (e) => { const items = e.clipboardData?.items; if (!items) return; for (let i = 0; i < items.length; i++) { if (items[i].type.startsWith("image/")) { e.preventDefault(); const file = items[i].getAsFile(); if (file) { handleImageFile(file); } return; } } }}
+                onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "image/*"; input.onchange = () => { const file = input.files?.[0]; if (file) readFileAsDataUrl(file).then((d) => { onChange({ ...block, html: imageBlockHtml(d, file.name) }); }); }; input.click(); }}>
+                <span className="text-3xl block mb-2">🖼</span>
+                <span className="font-sans text-sm" style={{ color: "var(--text-secondary)" }}>点击/拖拽/粘贴上传</span>
+              </div>
+            </>
           ) : (
             <div className="space-y-2">
               <div className="relative inline-block group/img" style={{ width: imgWidth + "%", maxWidth: "100%" }}>
-                <img ref={imgRef} src={imgUrl} alt="预览"
-                  style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  onDoubleClick={() => setLightboxSrc(imgUrl)} />
+                {imgError ? (
+                  <div className="rounded flex items-center justify-center" style={{ backgroundColor: "var(--bg-subtle)", minHeight: 120 }}>
+                    <span className="font-sans text-sm" style={{ color: "var(--text-muted)" }}>🖼 加载失败</span>
+                  </div>
+                ) : (
+                  <img ref={imgRef} src={imgUrl} alt="预览"
+                    style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }}
+                    onError={() => setImgError(true)}
+                    onDoubleClick={() => setLightboxSrc(imgUrl)} />
+                )}
                 {/* 选中边框和四角拖拽手柄 */}
                 <div className="absolute inset-0 opacity-0 group-hover/img:opacity-100 transition-opacity pointer-events-none"
                   style={{ border: "2px solid var(--accent)", borderRadius: 6 }} />
@@ -1363,7 +1476,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
       <div className="flex rounded-r-lg"
         style={{ backgroundColor: "color-mix(in srgb, var(--accent-warm) 8%, transparent)", borderLeft: "4px solid var(--accent-warm)" }}>
         <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="flex-1 px-4 py-3 outline-none italic"
           style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1373,11 +1486,21 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
 
     // ── 有序列表 ──
     if (block.type === "ol") {
-      // 计算当前组内总项数
-      let totalInGroup = 0;
+      // 计算作用域内总 ol 项数（每个标题节独立）
       const blks = allBlocks || [];
-      for (let i = index; i >= 0 && blks[i]?.type === "ol" && !(i < index && blks[i]?.restartNumbering); i--) totalInGroup++;
-      for (let i = index + 1; i < blks.length && blks[i]?.type === "ol" && !blks[i]?.restartNumbering; i++) totalInGroup++;
+      let totalInGroup = 0;
+      if (blks.length) {
+        let scopeStart = 0, scopeEnd = blks.length;
+        for (let i = index - 1; i >= 0; i--) {
+          if (["h1", "h2", "h3", "h4", "h5"].includes(blks[i]?.type || "")) { scopeStart = i + 1; break; }
+        }
+        for (let i = scopeStart; i < blks.length; i++) {
+          if (["h1", "h2", "h3", "h4", "h5"].includes(blks[i]?.type || "") && i > index) { scopeEnd = i; break; }
+        }
+        for (let i = scopeStart; i < scopeEnd; i++) {
+          if (blks[i]?.type === "ol" || blks[i]?.ordered) totalInGroup++;
+        }
+      }
 
       return (
       <div className="flex" style={{ paddingLeft: 0 }}>
@@ -1386,22 +1509,28 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
           onClick={() => setOlMenu(!olMenu)} title="点击设置编号">
           {olNumber ?? 1}.
           {olMenu && (
-            <div className="absolute left-0 top-6 z-50 w-44 rounded-lg border shadow-lg py-1"
+            <div className="ol-popup absolute left-0 bottom-full mb-1 z-50 w-44 rounded-lg border shadow-lg py-1"
               style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}
               onClick={(e) => e.stopPropagation()}>
               <div className="px-3 py-1.5 font-sans text-xs" style={{ color: "var(--text-muted)" }}>
                 第 {olNumber ?? 1} 项，共 {totalInGroup} 项
               </div>
               <div className="mx-2 my-0.5" style={{ borderTop: "1px solid var(--border-light)" }} />
-              <button className="w-full px-3 py-1.5 text-left font-sans text-xs hover:bg-[var(--bg-subtle)]" style={{ color: "var(--text)" }}
-                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOlMenu(false); onChange({ ...block, restartNumbering: !block.restartNumbering }); }}>
-                {block.restartNumbering ? "继续上一组编号" : "重新开始编号"}
+              <button className="w-full px-3 py-1.5 text-left font-sans text-xs hover:bg-[var(--bg-subtle)] flex items-center gap-2" style={{ color: "var(--text)" }}
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOlMenu(false); onChange({ ...block, restartNumbering: false }); }}>
+                <span className="text-[10px]" style={{ color: block.restartNumbering ? "transparent" : "var(--accent)" }}>✓</span>
+                跟随上一组编号
+              </button>
+              <button className="w-full px-3 py-1.5 text-left font-sans text-xs hover:bg-[var(--bg-subtle)] flex items-center gap-2" style={{ color: "var(--text)" }}
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOlMenu(false); onChange({ ...block, restartNumbering: true }); }}>
+                <span className="text-[10px]" style={{ color: block.restartNumbering ? "var(--accent)" : "transparent" }}>✓</span>
+                重新开始编号
               </button>
             </div>
           )}
         </div>
         <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="w-full py-0.5 outline-none"
           style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1414,7 +1543,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
       <div className="flex" style={{ paddingLeft: 0 }}>
         <div className="w-6 shrink-0 text-right pr-2 font-mono text-sm" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>•</div>
         <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+          onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           className="w-full py-0.5 outline-none"
           style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1432,7 +1561,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
             {block.checked && <span className="text-white text-[10px] font-bold">✓</span>}
           </button>
           <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-            onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+            onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             className="flex-1 outline-none"
             style={{ color: block.checked ? "var(--text-muted)" : "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em", textDecoration: block.checked ? "line-through" : "none" }}
@@ -1452,7 +1581,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
             onChange({ ...block, calloutType: types[(idx + 1) % types.length] });
           }}>{preset.icon}</span>
           <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-            onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+            onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             className="flex-1 outline-none"
             style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1522,7 +1651,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
             style={{ transform: block.collapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "var(--text-secondary)" }}>▶</button>
           <div className="flex-1 min-w-0">
             <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
               className="w-full outline-none"
               style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1530,7 +1659,7 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
             <div className="overflow-hidden" style={{ maxHeight: block.collapsed ? 0 : 2000, opacity: block.collapsed ? 0 : 1, transition: "max-height 0.3s ease, opacity 0.3s ease" }}>
               <div className="ml-4 mt-1 pl-4 border-l-2" style={{ borderColor: "var(--border-light)" }}>
                 <ContentEditableArea html={block.toggleContent || ""} onChange={(html) => onChange({ ...block, toggleContent: html })}
-                  onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+                  onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
                   onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
                   className="w-full outline-none"
                   style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "0.9rem", lineHeight: 1.6, minHeight: "1.6em" }}
@@ -1544,21 +1673,35 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
 
     // ── 数学公式 ──
     if (block.type === "formula") {
+      const displayMode = block.formulaDisplay !== false;
       let rendered = "";
-      try { rendered = katex.renderToString(block.html || " ", { throwOnError: false, displayMode: true }); }
+      try { rendered = katex.renderToString(block.html.trim() || "\\ ", { throwOnError: false, displayMode }); }
       catch { rendered = escapeHtml(block.html); }
       return (
-        <div className="flex items-start gap-3 py-3">
-          <span className="text-lg shrink-0">∑</span>
-          <div className="flex-1 min-w-0">
+        <div className="py-3" tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace" || e.key === "Delete") {
+              if (!block.html.trim()) { e.preventDefault(); onBackspace(""); }
+            }
+          }}
+          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-lg shrink-0">∑</span>
             <ContentEditableArea html={block.html} onChange={(html) => onChange({ ...block, html })}
-              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
+              onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-              className="w-full outline-none font-mono text-sm"
+              className="flex-1 outline-none font-mono text-sm"
               style={{ color: "var(--text)", caretColor: "var(--accent)", lineHeight: 1.6, minHeight: "1.6em" }}
-              placeholder="输入 LaTeX 公式" spellCheck={false} />
-            <div className="py-3 flex justify-center overflow-x-auto" dangerouslySetInnerHTML={{ __html: rendered }} />
+              placeholder="输入 LaTeX 公式，如: E = mc^2" spellCheck={false} />
+            <button onClick={() => onChange({ ...block, formulaDisplay: !displayMode })}
+              className="shrink-0 px-1.5 py-0.5 rounded font-mono text-[10px] hover:bg-[var(--bg-subtle)] cursor-pointer"
+              style={{ color: "var(--text-muted)", border: "1px solid var(--border)" }}
+              title={displayMode ? "切换为行内公式" : "切换为块级公式"}>
+              {displayMode ? "块" : "行"}
+            </button>
           </div>
+          <div className="flex justify-center overflow-x-auto py-3" style={{ minHeight: 30 }}
+            dangerouslySetInnerHTML={{ __html: rendered }} />
         </div>
       );
     }
@@ -1593,12 +1736,113 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
     const placeholderText = block.type === "h1" ? "页面大标题…" : block.type === "h2" ? "二级标题…" : block.type === "h3" ? "三级标题…" : block.type === "h4" ? "四级标题…" : block.type === "h5" ? "五级标题…" : "";
 
     return (
-      <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
-        onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleImageFile}
-        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        className="w-full outline-none"
-        style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em", ...headingStyle }}
-        placeholder={placeholderText} spellCheck={false} />
+      block.ordered ? (
+        <div className="flex" style={{ paddingLeft: 0 }}>
+          <div className="relative w-6 shrink-0 text-right pr-2 font-mono text-sm cursor-pointer select-none"
+            style={{ color: "var(--text-muted)", lineHeight: 1.6 }}
+            onClick={() => setOlMenu(!olMenu)} title="点击设置编号">
+            {olNumber ?? 1}.
+            {olMenu && (
+              <div className="ol-popup absolute left-0 bottom-full mb-1 z-50 w-44 rounded-lg border shadow-lg py-1"
+                style={{ backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}
+                onClick={(e) => e.stopPropagation()}>
+                <div className="px-3 py-1.5 font-sans text-xs" style={{ color: "var(--text-muted)" }}>
+                  第 {olNumber ?? 1} 项
+                </div>
+                <div className="mx-2 my-0.5" style={{ borderTop: "1px solid var(--border-light)" }} />
+                <button className="w-full px-3 py-1.5 text-left font-sans text-xs hover:bg-[var(--bg-subtle)] flex items-center gap-2" style={{ color: "var(--text)" }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOlMenu(false); onChange({ ...block, restartNumbering: false }); }}>
+                  <span className="text-[10px]" style={{ color: block.restartNumbering ? "transparent" : "var(--accent)" }}>✓</span>
+                  跟随上一组编号
+                </button>
+                <button className="w-full px-3 py-1.5 text-left font-sans text-xs hover:bg-[var(--bg-subtle)] flex items-center gap-2" style={{ color: "var(--text)" }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); setOlMenu(false); onChange({ ...block, restartNumbering: true }); }}>
+                  <span className="text-[10px]" style={{ color: block.restartNumbering ? "var(--accent)" : "transparent" }}>✓</span>
+                  重新开始编号
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex gap-4 items-start">
+              <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+                onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
+                onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                className="flex-1 min-w-0 outline-none"
+                style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em", ...headingStyle }}
+                placeholder={placeholderText} spellCheck={false} />
+              {block.sideImage && (
+                <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
+                {sideImgError ? (
+                    <div className="rounded flex items-center justify-center" style={{ backgroundColor: "var(--bg-subtle)", minHeight: 80 }}>
+                      <span className="font-sans text-xs" style={{ color: "var(--text-muted)" }}>🖼 加载失败</span>
+                    </div>
+                  ) : (
+                    <img ref={sideImgRef} src={block.sideImage} alt="侧栏图片"
+                      style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }}
+                      onError={() => setSideImgError(true)}
+                      onDoubleClick={() => { const w = window.open(""); if (w) w.document.write(`<img src="${block.sideImage}" style="max-width:100%">`); }} />
+                  )}
+                  {["nw", "ne", "sw", "se"].map((pos) => (
+                    <div key={pos} onMouseDown={(e) => {
+                      e.preventDefault(); e.stopPropagation();
+                      const img = sideImgRef.current; if (!img) return;
+                      sideImgDragRef.current = { startX: e.clientX, startW: block.sideImgWidth ?? 50, imgWidth: img.offsetWidth };
+                      const onMove = (ev: MouseEvent) => {
+                        if (!sideImgDragRef.current) return;
+                        const dx = ev.clientX - sideImgDragRef.current.startX;
+                        const containerW = img.parentElement?.parentElement?.clientWidth || 800;
+                        const newPercent = Math.max(10, Math.min(100, sideImgDragRef.current.startW + (dx / containerW) * 100));
+                        onChange({ ...block, sideImgWidth: Math.round(newPercent) });
+                      };
+                      const onUp = () => { sideImgDragRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+                      document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
+                    }}
+                      className="absolute w-3 h-3 bg-white border-2 rounded-sm opacity-0 group-hover/sideimg:opacity-100 transition-opacity cursor-nwse-resize pointer-events-auto z-10"
+                      style={{ borderColor: "var(--accent)", [pos.includes("n") ? "top" : "bottom"]: -5, [pos.includes("w") ? "left" : "right"]: -5 }} />
+                  ))}
+                  <button onClick={() => onChange({ ...block, sideImage: undefined, sideImgWidth: undefined })} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover/sideimg:opacity-100 transition-opacity cursor-pointer z-10">✕</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-4 items-start">
+          <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+            onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
+            onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+            className="flex-1 min-w-0 outline-none"
+            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1.6em", ...headingStyle }}
+            placeholder={placeholderText} spellCheck={false} />
+          {block.sideImage && (
+            <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
+            <img ref={sideImgRef} src={block.sideImage} alt="侧栏图片"
+              style={{ width: "100%", height: "auto", borderRadius: 6, display: "block" }}
+              onDoubleClick={() => { const w = window.open(""); if (w) w.document.write(`<img src="${block.sideImage}" style="max-width:100%">`); }} />
+            {["nw", "ne", "sw", "se"].map((pos) => (
+              <div key={pos} onMouseDown={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                const img = sideImgRef.current; if (!img) return;
+                sideImgDragRef.current = { startX: e.clientX, startW: block.sideImgWidth ?? 50, imgWidth: img.offsetWidth };
+                 const onMove = (ev: MouseEvent) => {
+                   if (!sideImgDragRef.current) return;
+                   const dx = ev.clientX - sideImgDragRef.current.startX;
+                   const containerW = img.parentElement?.parentElement?.clientWidth || 800;
+                   const newPercent = Math.max(10, Math.min(100, sideImgDragRef.current.startW + (dx / containerW) * 100));
+                  onChange({ ...block, sideImgWidth: Math.round(newPercent) });
+                };
+                const onUp = () => { sideImgDragRef.current = null; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+                document.addEventListener("mousemove", onMove); document.addEventListener("mouseup", onUp);
+              }}
+                className="absolute w-3 h-3 bg-white border-2 rounded-sm opacity-0 group-hover/sideimg:opacity-100 transition-opacity cursor-nwse-resize pointer-events-auto z-10"
+                style={{ borderColor: "var(--accent)", [pos.includes("n") ? "top" : "bottom"]: -5, [pos.includes("w") ? "left" : "right"]: -5 }} />
+            ))}
+            <button onClick={() => onChange({ ...block, sideImage: undefined, sideImgWidth: undefined })} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover/sideimg:opacity-100 transition-opacity cursor-pointer z-10">✕</button>
+          </div>
+        )}
+      </div>
+      )
     );
   };
 
@@ -1609,17 +1853,26 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
     <div className="group relative" data-block={block.id} {...(isHeading ? { "data-heading": "true" } as Record<string, string> : {})}>
       <div className="flex" style={{ minHeight: block.type === "hr" ? 20 : block.type === "code" ? 0 : 32 }}>
         {/* 左侧操作区 */}
-        <div className="w-14 shrink-0 pt-1 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg"
+        <div className="w-14 shrink-0 pt-1 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg relative"
           onMouseEnter={() => setGutterHovered(true)} onMouseLeave={() => setGutterHovered(false)}>
           {isEmpty ? (
             <button ref={plusRef} onMouseDown={(e) => { e.preventDefault(); openInsertPicker(); }}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-2xl font-bold hover:scale-110 hover:bg-[var(--bg-subtle)] transition-transform"
-              style={{ color: "var(--accent)", lineHeight: 1 }} title="选择块类型">+</button>
+              className="w-10 h-10 flex items-center justify-center rounded-full text-2xl font-bold hover:scale-110 hover:bg-[var(--bg-subtle)] transition-transform group/plus relative"
+              style={{ color: "var(--accent)", lineHeight: 1 }}>
+              +
+              <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md font-sans text-[11px] whitespace-nowrap opacity-0 group-hover/plus:opacity-100 transition-opacity pointer-events-none z-50"
+                style={{ backgroundColor: "#1a1a1a", color: "#fff" }}>选择块类型</span>
+            </button>
           ) : (
             <button ref={typeRef} onMouseDown={(e) => { e.preventDefault(); openChangePicker(); }}
-              className="w-10 h-10 flex items-center justify-center rounded text-base font-bold hover:bg-[var(--bg-subtle)]"
-              style={{ color: "var(--text-muted)", fontFamily: "'SF Mono', monospace", lineHeight: 1 }}
-              title={`${currentTypeMeta.label} — 点击切换`}>{currentTypeMeta.icon}</button>
+              className="w-10 h-10 flex items-center justify-center rounded text-base font-bold hover:bg-[var(--bg-subtle)] group/type relative"
+              style={{ color: "var(--text-muted)", fontFamily: "'SF Mono', monospace", lineHeight: 1 }}>
+              {currentTypeMeta.icon}
+              <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md font-sans text-[11px] whitespace-nowrap opacity-0 group-hover/type:opacity-100 transition-opacity pointer-events-none z-50"
+                style={{ backgroundColor: "#1a1a1a", color: "#fff" }}>
+                {currentTypeMeta.label}{block.ordered ? " · 编号" : ""}
+              </span>
+            </button>
           )}
         </div>
 
@@ -1631,12 +1884,12 @@ function BlockView({ block, index, onChange, onEnter, onDelete, onInsertAfter, o
       </div>
 
       {/* TypePicker弹窗 */}
-      <TypePicker open={showPicker} position={pickerPos} currentType={block.type} onSelect={handlePickerSelect} onClose={() => setShowPicker(false)} />
+      <TypePicker open={showPicker} position={pickerPos} currentType={block.type} ordered={block.ordered} onSelect={handlePickerSelect} onClose={() => setShowPicker(false)} />
 
       {/* 链接悬浮浮窗 */}
       {linkPopup && (
         <div className="fixed z-[150] flex items-center gap-0.5 px-2 py-1 rounded-lg shadow-lg border"
-          style={{ left: linkPopup.x, top: linkPopup.y, backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}
+          style={{ left: linkPopup.x, bottom: window.innerHeight - linkPopup.y, backgroundColor: "var(--bg-card)", borderColor: "var(--border)" }}
           onMouseEnter={onPopupEnter} onMouseLeave={onPopupLeave}>
           <span className="font-sans text-[10px] px-1 truncate max-w-[200px]" style={{ color: "var(--text-muted)" }}>{linkPopup.text}</span>
           <a href={linkPopup.url} target="_blank" rel="noopener" className="px-2 py-0.5 rounded font-sans text-[10px] font-medium cursor-pointer hover:bg-[var(--bg-subtle)]"
@@ -1679,6 +1932,13 @@ export default function WritePage() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+
+  // ── 权限守卫 ──
+  const { data: session, status } = useSession();
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/login");
+    if (status === "authenticated" && session?.user?.role !== "admin") router.push("/blog");
+  }, [status, session, router]);
 
   // ── 初始化 ──
   useEffect(() => { setShortcuts(loadShortcuts()); }, []);
@@ -1755,8 +2015,10 @@ export default function WritePage() {
       const updated = [...prev];
       updated.splice(index + 1, 0, newBlock);
       setTimeout(() => {
-        const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) setCursorToEnd(el);
+        requestAnimationFrame(() => {
+          const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+          if (el) setCursorToStart(el);
+        });
       }, 20);
       return updated;
     });
@@ -1945,6 +2207,8 @@ export default function WritePage() {
 
       // 跨块选区Delete/Backspace：Range.deleteContents() 直接操作DOM
       if (e.key === "Backspace" || e.key === "Delete") {
+        // 若BlockView已处理过（调了e.preventDefault），跳过避免重复删除破坏选区
+        if (e.defaultPrevented) return;
         const sel = window.getSelection();
         if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
           const r = sel.getRangeAt(0);
@@ -2129,6 +2393,11 @@ export default function WritePage() {
   // ═══════════════════════════════════════
   //  JSX
   // ═══════════════════════════════════════
+
+  if (status !== "authenticated" || session?.user?.role !== "admin") {
+    return <div className="max-w-3xl mx-auto px-6 py-20"><p className="font-sans" style={{ color: "var(--text-muted)" }}>加载中…</p></div>;
+  }
+
   return (
     <div id="editor-root" className="max-w-[900px] mx-auto px-8 py-12" style={{ userSelect: "text", scrollBehavior: "auto" }}>
       {/* 全局样式 */}
@@ -2236,15 +2505,34 @@ export default function WritePage() {
       {/* 块列表 */}
       <div className="space-y-0" style={{ userSelect: "text" }}>
         {blocks.map((block, index) => {
-          // 动态计算有序列表编号：连续ol块共享递增编号
+          // 动态计算有序列表编号：二维度法则
+          // 高维（标题+ordered）：同父标题下同级ordered标题互编，遇更高级标题断
+          // 低维（ol/正文+ordered）：仅当前标题节内编号，遇任意标题断
           let olNumber: number | undefined;
-          if (block.type === "ol") {
+          if (block.type === "ol" || block.ordered) {
             olNumber = 1;
-            // 当前块标记了重新开始编号，不向前追溯
+            const currentIsHeading = ["h1","h2","h3","h4","h5"].includes(block.type);
+            const currentLevel = currentIsHeading ? parseInt(block.type.charAt(1)) : 0;
             if (!block.restartNumbering) {
               for (let i = index - 1; i >= 0; i--) {
-                if (blocks[i].type !== "ol" || blocks[i].restartNumbering) break;
-                olNumber++;
+                const t = blocks[i].type;
+                const otherIsHeading = ["h1","h2","h3","h4","h5"].includes(t);
+                const otherLevel = otherIsHeading ? parseInt(t.charAt(1)) : 0;
+                if (currentIsHeading) {
+                  // 高维：只计同级ordered标题，遇高级标题断，无ordered同级标题跳过
+                  if (otherIsHeading) {
+                    if (otherLevel < currentLevel) break;
+                    if (otherLevel === currentLevel && blocks[i].ordered) { olNumber++; continue; }
+                    continue;
+                  }
+                } else {
+                  // 低维：遇任意标题断
+                  if (otherIsHeading) break;
+                  const isOl = blocks[i].type === "ol" || blocks[i].ordered;
+                  if (!isOl) continue;
+                  if (blocks[i].restartNumbering) { olNumber++; break; }
+                  olNumber++;
+                }
               }
             }
           }
@@ -2264,6 +2552,20 @@ export default function WritePage() {
                   setTimeout(() => readFileAsDataUrl(file).then((d) => {
                     setBlocks((prev) => prev.map((b) => b.id === newBlock.id ? { ...b, html: imageBlockHtml(d, file.name) } : b));
                   }), 50);
+                }}
+                onDropImg={async (file) => {
+                  pushSnapshot();
+                  const dataUrl = await readFileAsDataUrl(file);
+                  if (block.html.trim()) {
+                    setBlocks((prev) => prev.map((b) => b.id === block.id ? { ...b, sideImage: dataUrl, sideImgWidth: b.sideImgWidth ?? 50 } : b));
+                  } else {
+                    const newBlock = createBlock("img", imageBlockHtml(dataUrl, file.name));
+                    setBlocks((prev) => {
+                      const updated = [...prev];
+                      updated.splice(index + 1, 0, newBlock);
+                      return updated;
+                    });
+                  }
                 }}
                 onBackspace={(content) => mergeUpward(block.id, index, content)}
                 onDeleteDown={() => mergeDownward(block.id, index)}

@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.env.local
+
+*.log
+OPENCODE_*.md
+OPENCODE_*.md.bak
+IMPLEMENTATION.md
+src/app/write/page.tsx.*.bak
+src/app/write/page.tsx.backup*

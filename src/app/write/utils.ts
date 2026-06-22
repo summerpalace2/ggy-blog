@@ -8,16 +8,11 @@ import type { Block, BType } from "./types";
 
 // ── ID生成 ──
 
-let _idCounter = 0;
-
-/** 生成唯一块ID——计数器挂在window上防热重载重置 */
+/** 生成唯一块ID——基于时间戳+随机数，确保Fast Refresh下不重复 */
 export function generateId(): string {
-  if (typeof window !== "undefined") {
-    const w = window as any;
-    w.__bid = (w.__bid || 0) + 1;
-    return "b" + w.__bid.toString(36);
-  }
-  return "b" + (++_idCounter).toString(36).padStart(3, "0");
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 6);
+  return "b" + ts + rand;
 }
 
 /** 创建新块 */
@@ -64,6 +59,8 @@ export function blocksToMarkdown(blocks: Block[]): string {
       case "h1": return "# " + text;
       case "h2": return "## " + text;
       case "h3": return "### " + text;
+      case "h4": return "#### " + text;
+      case "h5": return "##### " + text;
       case "hr": return "---";
       case "code": return "```" + (block.lang || "") + "\n" + (block.html || "") + "\n```";
       case "quote": return "> " + text;
@@ -123,6 +120,8 @@ export function markdownToBlocks(raw: string): Block[] {
     if (firstLine.startsWith("# ")) { blocks.push(createBlock("h1", parseInline(firstLine.slice(2) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "")))); cursor++; continue; }
     if (firstLine.startsWith("## ")) { blocks.push(createBlock("h2", parseInline(firstLine.slice(3) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "")))); cursor++; continue; }
     if (firstLine.startsWith("### ")) { blocks.push(createBlock("h3", parseInline(firstLine.slice(4) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "")))); cursor++; continue; }
+    if (firstLine.startsWith("#### ")) { blocks.push(createBlock("h4", parseInline(firstLine.slice(5) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "")))); cursor++; continue; }
+    if (firstLine.startsWith("##### ")) { blocks.push(createBlock("h5", parseInline(firstLine.slice(6) + (lines.length > 1 ? "\n" + lines.slice(1).join("\n") : "")))); cursor++; continue; }
     if (firstLine.startsWith("> ")) { blocks.push(createBlock("quote", parseInline(lines.map((l) => l.startsWith("> ") ? l.slice(2) : l).join("\n")))); cursor++; continue; }
     if (firstLine.startsWith("```")) { const lang = firstLine.slice(3).trim() || undefined; let code = ""; cursor++; while (cursor < sections.length && !sections[cursor].trim().startsWith("```")) { code += (code ? "\n" : "") + sections[cursor].trimEnd(); cursor++; } if (cursor < sections.length) cursor++; blocks.push({ id: generateId(), type: "code", html: code, lang }); continue; }
     if (lines.every((l) => l.startsWith("- [ ] ") || l.startsWith("- [x] "))) { for (const line of lines) { const c = line.startsWith("- [x] "); blocks.push({ id: generateId(), type: "todo", html: parseInline(c ? line.slice(6) : line.slice(6)), checked: c }); } cursor++; continue; }

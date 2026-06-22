@@ -124,6 +124,8 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
 .prose p { margin-bottom: 1.5rem; }
 .prose h2 { font-size: 1.5rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light); }
 .prose h3 { font-size: 1.25rem; margin: 2rem 0 0.75rem; }
+.prose h4 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+.prose h5 { font-size: 1rem; margin: 1.5rem 0 0.5rem; }
 .prose a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; transition: border-color 0.2s; }
 .prose a:hover { border-bottom-color: var(--accent); }
 .prose blockquote { border-left: 3px solid var(--accent-warm); padding-left: 1.25rem; margin: 1.5rem 0; color: var(--text-secondary); font-style: italic; }
@@ -133,6 +135,7 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
 .prose ul, .prose ol { margin: 1rem 0; padding-left: 1.5rem; }
 .prose li { margin-bottom: 0.5rem; }
 .prose hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+.prose img { max-width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0; }
 
 /* contentEditable 占位符 */
 [contenteditable][data-placeholder]:empty::before {
