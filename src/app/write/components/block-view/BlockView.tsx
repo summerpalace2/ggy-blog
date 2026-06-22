@@ -237,14 +237,25 @@ export const BlockView: FC<Props> = ({
         }
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
-        if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
+        // 有序覆盖层（ordered标题/段落）也按同样逻辑处理
+        const isOrderedBlock = block.type === "ol" || block.ordered;
+        if (isOrderedBlock && !afterText) {
           const isBlockEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
           if (isBlockEmpty) {
-            onChange({ ...block, type: "p" });
+            // 有序块空行：脱ordered，退为普通块
+            if (block.ordered) {
+              onChange({ ...block, ordered: undefined });
+            } else {
+              onChange({ ...block, type: "p" });
+            }
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
-            onEnter("", block.type, index);
+            // 有序块有内容：新生成的块转为ol类型以继承编号
+            onEnter("", "ol", index);
           }
+        } else if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
+          // 普通列表块（非ordered覆盖层）
+          onEnter("", block.type, index);
         } else {
           const shortcut = detectMarkdownShortcut(afterText);
           const newType = shortcut ? shortcut.type : block.type;
