@@ -219,12 +219,18 @@ export const BlockView: FC<Props> = ({
 
       if (!splitResult.before && !splitResult.after) {
         // 光标在空行按Enter：列表空行→当前块退为段落，不新建块
-        const exitType = ["ol", "ul", "todo"].includes(block.type) ? "p" : block.type;
-        if (exitType !== block.type) {
-          onChange({ ...block, type: exitType });
+        // 有序覆盖层空行→脱ordered，不新建块
+        if (block.ordered) {
+          onChange({ ...block, ordered: undefined });
           setTimeout(() => edRef.current?.focus(), 0);
         } else {
-          onEnter("", exitType, index);
+          const exitType = ["ol", "ul", "todo"].includes(block.type) ? "p" : block.type;
+          if (exitType !== block.type) {
+            onChange({ ...block, type: exitType });
+            setTimeout(() => edRef.current?.focus(), 0);
+          } else {
+            onEnter("", exitType, index);
+          }
         }
       } else {
         // 通知父组件更新html（仅在内容变化时才触发）
@@ -257,8 +263,16 @@ export const BlockView: FC<Props> = ({
           // 普通列表块（非ordered覆盖层）
           onEnter("", block.type, index);
         } else {
+          // 非空行Enter拆分：检查当前块是否为有序覆盖层
           const shortcut = detectMarkdownShortcut(afterText);
-          const newType = shortcut ? shortcut.type : block.type;
+          const baseType = shortcut ? shortcut.type : block.type;
+          let newType: BType;
+          // 有序覆盖层Enter：新生成的块转为ol以继承编号（ol自带编号显示）
+          if (block.ordered) {
+            newType = "ol";
+          } else {
+            newType = baseType;
+          }
           onEnter(splitResult.after, newType, index);
         }
       }
