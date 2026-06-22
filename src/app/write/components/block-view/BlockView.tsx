@@ -240,10 +240,6 @@ export const BlockView: FC<Props> = ({
         // 通知父组件更新html（仅在内容变化时才触发）
         if (splitResult.before !== block.html) {
           onChange({ ...block, html: splitResult.before });
-          requestAnimationFrame(() => {
-            const el = edRef.current;
-            if (el) setCursorToEnd(el);
-          });
         }
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
@@ -336,12 +332,14 @@ export const BlockView: FC<Props> = ({
           return; // 让浏览器正常删字符
         }
 
-        // 有序/无序/待办列表：有内容→先降为段落，再Backspace合并到上一段
+        // 有序/无序/待办列表：有内容→退为段落（不再合并到上一段）
         if (["ol", "ul", "todo"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
             onBackspace(edEl.innerHTML || "");
           } else {
+            // ol/ul/todo 退为段落后不应合并到上一块，标记为已降级
             onChange({ ...block, type: "p" });
+            justDemotedRef.current = true;
             setTimeout(() => edRef.current?.focus(), 0);
           }
           return;
