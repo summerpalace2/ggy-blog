@@ -163,10 +163,11 @@ export function mergeUpward(
       return updated;
     }
 
-    // 文字守恒：把当前块文字追加到上一块，然后删除当前块
+    // 有内容：文字合并到上一块，然后删除当前块
     // 从DOM读取上一块最新内容（防止防抖导致state滞后）
     const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
     const prevHtml = prevEl?.innerHTML || previousBlock.html;
+    // content是innerText纯文本
     updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
     setTimeout(() => {
