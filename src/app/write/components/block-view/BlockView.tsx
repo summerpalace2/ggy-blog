@@ -294,7 +294,7 @@ export const BlockView: FC<Props> = ({
       return;
     }
 
-    // Backspace：行首删除逻辑
+    // Backspace：删除逻辑
     if (e.key === "Backspace" && block.type !== "hr") {
       if (isComposing.current) return;
       const edEl = edRef.current; if (!edEl) return;
@@ -310,73 +310,78 @@ export const BlockView: FC<Props> = ({
         return;
       }
 
-      // 检查光标是否在行首
+      // 检查光标位置
       let atStart = false;
+      let atEnd = false;
       if (sel && sel.rangeCount > 0) {
         const r = sel.getRangeAt(0);
+        // 检查是否在行首
         const preRange = document.createRange();
         preRange.selectNodeContents(edEl);
         preRange.setEnd(r.startContainer, r.startOffset);
         atStart = preRange.toString().length === 0;
+        // 检查是否在行尾
+        const postRange = document.createRange();
+        postRange.selectNodeContents(edEl);
+        postRange.setStart(r.endContainer, r.endOffset);
+        atEnd = postRange.toString().length === 0;
       }
 
-      if (atStart) {
-        e.preventDefault();
+      // 铁律1：光标不在行首 → 让浏览器删字符
+      if (!atStart) {
+        return; // 不拦截，浏览器默认删光标左侧字符
+      }
 
-        // 有序覆盖层：有内容→脱ordered，空→合并到上一块
-        if (block.ordered) {
-          if (block.html.replace(/<[^>]+>/g, "").trim()) {
-            onChange({ ...block, ordered: undefined, restartNumbering: undefined });
-            setTimeout(() => edRef.current?.focus(), 0);
-          } else {
-            flushRef.current?.();
-            onBackspace("");
-          }
-          return;
+      // 光标在行首：触发块操作
+      e.preventDefault();
+
+      // 有序覆盖层：有内容→脱ordered，空→合并到上一块
+      if (block.ordered) {
+        if (block.html.replace(/<[^>]+>/g, "").trim()) {
+          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+          setTimeout(() => edRef.current?.focus(), 0);
+        } else {
+          flushRef.current?.();
+          onBackspace("");
         }
-
-        // 标题：空标题→合并到上一块，有内容→退化为正文
-        if (["h1", "h2", "h3", "h4", "h5"].includes(block.type)) {
-          if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            flushRef.current?.();
-            onBackspace("");
-          } else {
-            onChange({ ...block, type: "p" });
-            justDemotedRef.current = true;
-          }
-          return;
-        }
-
-        // 引用：空引用→合并到上一块，有内容→正常删字符
-        if (block.type === "quote") {
-          if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            flushRef.current?.();
-            onBackspace("");
-          }
-          return;
-        }
-
-        // 有序/无序/待办列表：有内容→退为段落，空→退为段落后合并到上一块
-        if (["ol", "ul", "todo"].includes(block.type)) {
-          if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            // 空列表→退为段落
-            onChange({ ...block, type: "p" });
-            justDemotedRef.current = true;
-            setTimeout(() => edRef.current?.focus(), 0);
-          } else {
-            // 有内容→退为段落
-            onChange({ ...block, type: "p" });
-            justDemotedRef.current = true;
-            setTimeout(() => edRef.current?.focus(), 0);
-          }
-          return;
-        }
-
-        // 普通段落：合并到上一块
-        flushRef.current?.();
-        onBackspace("");
         return;
       }
+
+      // 标题：空标题→合并到上一块，有内容→退化为正文
+      if (["h1", "h2", "h3", "h4", "h5"].includes(block.type)) {
+        if (!block.html.replace(/<[^>]+>/g, "").trim()) {
+          flushRef.current?.();
+          onBackspace("");
+        } else {
+          onChange({ ...block, type: "p" });
+          justDemotedRef.current = true;
+        }
+        return;
+      }
+
+      // 引用：空引用→合并到上一块，有内容→正常删字符
+      if (block.type === "quote") {
+        if (!block.html.replace(/<[^>]+>/g, "").trim()) {
+          flushRef.current?.();
+          onBackspace("");
+        }
+        return;
+      }
+
+      // 有序/无序/待办列表：有内容→退为段落，空→退为段落后合并到上一块
+      if (["ol", "ul", "todo"].includes(block.type)) {
+        // 空列表→退为段落（列表缓冲带）
+        onChange({ ...block, type: "p" });
+        justDemotedRef.current = true;
+        setTimeout(() => edRef.current?.focus(), 0);
+        return;
+      }
+
+      // 普通段落：合并到上一块
+      flushRef.current?.();
+      onBackspace("");
+
+
     }
 
     // Delete：行尾删除
@@ -405,24 +410,26 @@ export const BlockView: FC<Props> = ({
         preRange.setEnd(r.startContainer, r.startOffset);
         atStart = preRange.toString().length === 0;
       }
-      // Delete在行首：等同于Backspace行首，合并到上一块
-      if (atStart && !atEnd) {
-        e.preventDefault();
-        flushRef.current?.();
-        onBackspace("");
-        return;
-      }
-      // Delete在行尾：块为空→合并到上一块，块有内容→让浏览器默认删字符
-      if (atEnd) {
+      // Delete：删除逻辑
+      if (atEnd && !atStart) {
+        // 光标在行尾：块为空→合并到上一块，块有内容→删字符
         const isEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
         if (isEmpty) {
           e.preventDefault();
           flushRef.current?.();
           onDeleteDown?.();
         }
-        // 有内容时不拦截，让浏览器默认删除最后一个字符
+        // 有内容时不拦截，浏览器默认删最后一个字符
         return;
       }
+      if (atStart && atEnd) {
+        // 光标在行首且在行尾（空块）：合并到上一块
+        e.preventDefault();
+        flushRef.current?.();
+        onDeleteDown?.();
+        return;
+      }
+      // 光标在行中：不拦截，浏览器默认删光标右侧字符
     }
   };
 
