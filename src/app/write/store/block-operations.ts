@@ -194,17 +194,17 @@ export function mergeDownward(
     const nextBlock = prev[realIndex + 1];
     const updated = [...prev];
 
-    // 文字守恒：从DOM读取最新内容合并到下一块（ol/ul/todo也合并）
+    // 文字守恒：当前块文字+下一块文字→存入下一块，删除当前块
     const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
     const nextHtml = nextEl?.innerHTML || nextBlock.html;
     const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
     const currentHtml = currentEl?.innerHTML || currentBlock.html;
     if (nextHtml) {
-      updated[realIndex] = { ...currentBlock, html: currentHtml + nextHtml };
+      updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
     }
-    updated.splice(realIndex + 1, 1);
+    updated.splice(realIndex, 1);
     setTimeout(() => {
-      const el = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+      const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
       if (el) setCursorToEnd(el);
     }, 10);
     return updated;
