@@ -358,10 +358,10 @@ export const BlockView: FC<Props> = ({
         }
 
         // 普通段落/标题降级后的段落：合并到上一块
-        // justDemotedRef=true 时直接删除（不合并），因为刚由标题降级
         if (justDemotedRef.current) {
           justDemotedRef.current = false;
-          onDelete();
+          // 刚从标题/列表退为段落，Backspace应该合并到上一块
+          onBackspace(edEl.innerText || "");
           return;
         }
 
