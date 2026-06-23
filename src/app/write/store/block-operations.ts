@@ -167,7 +167,7 @@ export function mergeUpward(
     // 从DOM读取上一块最新内容（防止防抖导致state滞后）
     const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
     const prevHtml = prevEl?.innerHTML || previousBlock.html;
-    // content是innerText纯文本，直接拼接（飞书也是纯文本拼接）
+    // content是innerHTML纯文本，直接拼接
     updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
     setTimeout(() => {

@@ -377,9 +377,9 @@ export const BlockView: FC<Props> = ({
         return;
       }
 
-      // 普通段落：合并到上一块（传当前块文本内容）
+      // 普通段落：合并到上一块（传innerHTML保持格式）
       flushRef.current?.();
-      onBackspace(edEl.innerText || "");
+      onBackspace(edEl.innerHTML || "");
       return;
     }
 
@@ -411,21 +411,33 @@ export const BlockView: FC<Props> = ({
       }
       // Delete：删除逻辑
       if (atEnd && !atStart) {
-        // 光标在行尾：块为空→合并到上一块，块有内容→删字符
+        // 光标在行尾：块为空→降级/删除，块有内容→删字符
         const isEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
         if (isEmpty) {
           e.preventDefault();
           flushRef.current?.();
-          onDeleteDown?.();
+          // 有序列表空块→降级为普通段落，不是删除
+          if (["ol", "ul", "todo"].includes(block.type)) {
+            onChange({ ...block, type: "p" });
+            setTimeout(() => edRef.current?.focus(), 0);
+          } else {
+            // 普通段落空块→删除
+            onDeleteDown?.();
+          }
         }
         // 有内容时不拦截，浏览器默认删最后一个字符
         return;
       }
       if (atStart && atEnd) {
-        // 光标在行首且在行尾（空块）：合并到上一块
+        // 光标在行首且在行尾（空块）：有序列表降级，普通段落删除
         e.preventDefault();
         flushRef.current?.();
-        onDeleteDown?.();
+        if (["ol", "ul", "todo"].includes(block.type)) {
+          onChange({ ...block, type: "p" });
+          setTimeout(() => edRef.current?.focus(), 0);
+        } else {
+          onDeleteDown?.();
+        }
         return;
       }
       // 光标在行中：不拦截，浏览器默认删光标右侧字符
