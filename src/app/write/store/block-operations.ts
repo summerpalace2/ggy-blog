@@ -166,7 +166,10 @@ export function mergeUpward(
 
     // 内容合并到上一块然后删除当前块
     if (content) {
-      updated[realIndex - 1] = { ...previousBlock, html: previousBlock.html + content };
+      // 从DOM读取上一块最新内容（防止防抖导致state滞后）
+      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
+      const prevHtml = prevEl?.innerHTML || previousBlock.html;
+      updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     }
     updated.splice(realIndex, 1);
     setTimeout(() => {
