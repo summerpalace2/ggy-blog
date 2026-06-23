@@ -322,7 +322,7 @@ export const BlockView: FC<Props> = ({
       if (atStart) {
         e.preventDefault();
 
-        // 有序覆盖层：先脱ordered，再走标题/列表降级
+        // 有序覆盖层：先脱ordered
         if (block.ordered && block.html.replace(/<[^>]+>/g, "").trim()) {
           onChange({ ...block, ordered: undefined, restartNumbering: undefined });
           setTimeout(() => edRef.current?.focus(), 0);
@@ -332,7 +332,7 @@ export const BlockView: FC<Props> = ({
         // 标题：空标题→直接删除，有内容→退化为正文
         if (["h1", "h2", "h3", "h4", "h5"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            onBackspace(edEl.innerHTML || "");
+            onBackspace(edEl.innerText || "");
           } else {
             onChange({ ...block, type: "p" });
             justDemotedRef.current = true;
@@ -342,15 +342,14 @@ export const BlockView: FC<Props> = ({
 
         // 引用：有文字→正常删字符，空白→删框
         if (block.type === "quote" && block.html.replace(/<[^>]+>/g, "").trim()) {
-          return; // 让浏览器正常删字符
+          return;
         }
 
-        // 有序/无序/待办列表：有内容→退为段落（不再合并到上一段）
+        // 有序/无序/待办列表：有内容→退为段落
         if (["ol", "ul", "todo"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            onBackspace(edEl.innerHTML || "");
+            onBackspace(edEl.innerText || "");
           } else {
-            // ol/ul/todo 退为段落后不应合并到上一块，标记为已降级
             onChange({ ...block, type: "p" });
             justDemotedRef.current = true;
             setTimeout(() => edRef.current?.focus(), 0);
@@ -358,15 +357,16 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 标题降级后的段落：直接删除，不向上合并
+        // 普通段落/标题降级后的段落：合并到上一块
+        // justDemotedRef=true 时直接删除（不合并），因为刚由标题降级
         if (justDemotedRef.current) {
           justDemotedRef.current = false;
           onDelete();
           return;
         }
 
-        // 默认：调用mergeUpward向上合并
-        onBackspace(edEl.innerHTML || "");
+        // 默认：合并到上一块（文字守恒：删除当前块=把文字移到上一块）
+        onBackspace(edEl.innerText || "");
         return;
       }
     }

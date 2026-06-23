@@ -108,8 +108,8 @@ export function removeBlock(
 
 /**
  * 向上合并（Backspace行首触发）
- * - 空行：删除当前块
- * - 非空行：内容合并到上一块
+ * - 空内容：删除当前块
+ * - 非空内容：文字合并到上一块（文字守恒：删除块=移动文字）
  */
 export function mergeUpward(
   id: string, index: number, content: string,
@@ -128,24 +128,23 @@ export function mergeUpward(
     const currentBlock = prev[realIndex];
     const previousBlock = prev[realIndex - 1];
     const updated = [...prev];
-    const isEmptyContent = !content.replace(/<[^>]+>/g, "").trim();
+    // 判断内容是否为空（纯文本判断，不依赖HTML标签）
+    const isEmptyContent = !content.trim();
 
-    // 空行删除
+    // 空内容：删除当前块
     if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
       if (prev.length <= 1) return prev; // 保留最后一个块
-      // ol/ul/todo 空行：直接删除（BlockView已处理过，不会到这里）
       if (["ol", "ul", "todo"].includes(currentBlock.type)) {
-        updated.splice(realIndex, 1);
-        const focusIndex = Math.max(0, realIndex - 1);
-        const targetId = updated[focusIndex]?.id;
+        // 列表空块：先转段落（给第二次Backspace的机会）
+        updated[realIndex] = { ...currentBlock, type: "p", html: "" };
         setTimeout(() => {
-          const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
+          const el = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
           if (el) setCursorToEnd(el);
-        }, 0);
+        }, 10);
         return updated;
       }
       updated.splice(realIndex, 1);
-      // 聚焦到上方块而非下方块
+      // 聚焦到上方块
       const focusIndex = Math.max(0, realIndex - 1);
       const targetId = updated[focusIndex]?.id;
       setTimeout(() => {
@@ -155,7 +154,7 @@ export function mergeUpward(
       return updated;
     }
 
-    // 第一行非空：不合并
+    // 没有上一块：不合并
     if (realIndex <= 0) return prev;
 
     // 上一块是不可合并类型：直接删除当前块
@@ -164,13 +163,11 @@ export function mergeUpward(
       return updated;
     }
 
-    // 内容合并到上一块然后删除当前块
-    if (content) {
-      // 从DOM读取上一块最新内容（防止防抖导致state滞后）
-      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-      const prevHtml = prevEl?.innerHTML || previousBlock.html;
-      updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
-    }
+    // 文字守恒：把当前块文字追加到上一块，然后删除当前块
+    // 从DOM读取上一块最新内容（防止防抖导致state滞后）
+    const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
+    const prevHtml = prevEl?.innerHTML || previousBlock.html;
+    updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
     setTimeout(() => {
       const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
@@ -197,26 +194,11 @@ export function mergeDownward(
     const nextBlock = prev[realIndex + 1];
     const updated = [...prev];
 
-    // ol/ul/todo 不合并到下一块，直接删除当前块
-    if (["ol", "ul", "todo"].includes(currentBlock.type)) {
-      updated.splice(realIndex, 1);
-      // 聚焦到下一块
-      setTimeout(() => {
-        const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) setCursorToStart(el);
-      }, 10);
-      return updated;
-    }
-
-    if (["code", "hr", "img", "table"].includes(nextBlock.type)) {
-      updated.splice(realIndex + 1, 1);
-      return updated;
-    }
-    // 从DOM读取最新内容（防止防抖导致state滞后）
-    const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+    // 文字守恒：从DOM读取最新内容合并到下一块（ol/ul/todo也合并）
     const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-    const currentHtml = currentEl?.innerHTML || currentBlock.html;
     const nextHtml = nextEl?.innerHTML || nextBlock.html;
+    const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+    const currentHtml = currentEl?.innerHTML || currentBlock.html;
     if (nextHtml) {
       updated[realIndex] = { ...currentBlock, html: currentHtml + nextHtml };
     }
