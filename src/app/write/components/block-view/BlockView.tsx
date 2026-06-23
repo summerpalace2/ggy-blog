@@ -370,18 +370,17 @@ export const BlockView: FC<Props> = ({
 
       // 有序/无序/待办列表：有内容→退为段落，空→退为段落后合并到上一块
       if (["ol", "ul", "todo"].includes(block.type)) {
-        // 空列表→退为段落（列表缓冲带）
+        // 空列表或有内容→都退为段落（列表缓冲带）
         onChange({ ...block, type: "p" });
         justDemotedRef.current = true;
         setTimeout(() => edRef.current?.focus(), 0);
         return;
       }
 
-      // 普通段落：合并到上一块
+      // 普通段落：合并到上一块（传当前块文本内容）
       flushRef.current?.();
-      onBackspace("");
-
-
+      onBackspace(edEl.innerText || "");
+      return;
     }
 
     // Delete：行尾删除

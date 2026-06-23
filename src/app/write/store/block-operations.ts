@@ -131,7 +131,7 @@ export function mergeUpward(
     // 判断内容是否为空（纯文本判断，不依赖HTML标签）
     const isEmptyContent = !content.trim();
 
-    // 空内容：删除当前块
+    // 空内容：删除当前块（只有真的空才删）
     if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
       if (prev.length <= 1) return prev; // 保留最后一个块
       if (["ol", "ul", "todo"].includes(currentBlock.type)) {
