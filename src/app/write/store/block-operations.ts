@@ -167,7 +167,7 @@ export function mergeUpward(
     // 从DOM读取上一块最新内容（防止防抖导致state滞后）
     const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
     const prevHtml = prevEl?.innerHTML || previousBlock.html;
-    // content是innerText纯文本
+    // content是innerText纯文本，直接拼接（飞书也是纯文本拼接）
     updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
     setTimeout(() => {
@@ -179,7 +179,8 @@ export function mergeUpward(
 }
 
 /**
- * 向下合并（Delete行尾触发）
+ * 删除当前块（Delete行尾空块触发）
+ * 不合并文字，只删除空块，聚焦到下一块
  */
 export function mergeDownward(
   id: string, index: number,
@@ -188,24 +189,15 @@ export function mergeDownward(
 ) {
   pushSnapshot();
   setBlocks((prev) => {
+    if (prev.length <= 1) return prev; // 最后一个块保留
     const realIndex = prev.findIndex((b) => b.id === id);
-    if (realIndex < 0 || realIndex >= prev.length - 1) return prev;
-
-    const currentBlock = prev[realIndex];
-    const nextBlock = prev[realIndex + 1];
-    const updated = [...prev];
-
-    // 文字守恒：当前块文字+下一块文字→存入下一块，删除当前块
-    const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-    const nextHtml = nextEl?.innerHTML || nextBlock.html;
-    const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
-    const currentHtml = currentEl?.innerHTML || currentBlock.html;
-    if (nextHtml) {
-      updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
-    }
-    updated.splice(realIndex, 1);
+    if (realIndex < 0) return prev;
+    const updated = prev.filter((b) => b.id !== id);
+    // 聚焦到下一块（如果存在）或上一块
+    const focusIndex = Math.min(realIndex, updated.length - 1);
+    const targetId = updated[focusIndex]?.id;
     setTimeout(() => {
-      const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
+      const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
       if (el) setCursorToEnd(el);
     }, 10);
     return updated;
