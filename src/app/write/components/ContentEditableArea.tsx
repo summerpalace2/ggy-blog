@@ -21,11 +21,12 @@ interface Props {
   onFocus?: () => void;
   onBlur?: () => void;
   spellCheck?: boolean;
+  flushRef?: React.RefObject<(() => string) | null>;
 }
 
 export const ContentEditableArea: FC<Props> = ({
   html, onChange, onKeyDown, onPasteImg, onDropImg,
-  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck,
+  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck, flushRef,
 }) => {
   const ref = innerRef || useRef<HTMLDivElement>(null);
   const isInternalUpdate = useRef(false);
@@ -104,6 +105,27 @@ export const ContentEditableArea: FC<Props> = ({
     }
   };
 
+  /** 立即提交防抖内容并返回最新DOM值（供键盘事件使用） */
+  const flushAndGetHtml = (): string => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+      const pending = pendingHtml.current;
+      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
+        isInternalUpdate.current = true;
+        prevHtml.current = pending;
+        onChange(pending);
+      }
+      pendingHtml.current = null;
+    }
+    return ref.current?.innerHTML || "";
+  };
+
+  // 暴露给父组件
+  useEffect(() => {
+    if (flushRef) flushRef.current = flushAndGetHtml;
+  }, [flushRef]);
+
   /** 粘贴处理：图片优先，然后URL自动链接 */
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
     if (onPasteImg) {
@@ -150,6 +172,7 @@ export const ContentEditableArea: FC<Props> = ({
       onBlur={() => { flushDebounce(); onBlur?.(); }}
       className={className} style={style} spellCheck={spellCheck ?? false}
       data-placeholder={placeholder || ""}
+      data-flush={flushAndGetHtml}
     />
   );
 };

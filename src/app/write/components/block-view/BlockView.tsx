@@ -39,6 +39,7 @@ export const BlockView: FC<Props> = ({
 }) => {
   // ── 状态与引用 ──
   const edRef = useRef<HTMLDivElement>(null);
+  const flushRef = useRef<(() => string) | null>(null);
   const _focused = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 });
@@ -348,6 +349,7 @@ export const BlockView: FC<Props> = ({
         // 有序/无序/待办列表：有内容→退为段落
         if (["ol", "ul", "todo"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
+            flushRef.current?.();
             onBackspace(edEl.innerText || "");
           } else {
             onChange({ ...block, type: "p" });
@@ -360,12 +362,13 @@ export const BlockView: FC<Props> = ({
         // 普通段落/标题降级后的段落：合并到上一块
         if (justDemotedRef.current) {
           justDemotedRef.current = false;
-          // 刚从标题/列表退为段落，Backspace应该合并到上一块
+          flushRef.current?.();
           onBackspace(edEl.innerText || "");
           return;
         }
 
         // 默认：合并到上一块（文字守恒：删除当前块=把文字移到上一块）
+        flushRef.current?.();
         onBackspace(edEl.innerText || "");
         return;
       }
@@ -400,7 +403,8 @@ export const BlockView: FC<Props> = ({
       // Delete在行首：等同于Backspace行首，合并到上一块
       if (atStart && !atEnd) {
         e.preventDefault();
-        onBackspace(el.innerHTML || "");
+        flushRef.current?.();
+        onBackspace(el.innerText || "");
         return;
       }
       if (atEnd) { e.preventDefault(); onDeleteDown?.(); return; }
@@ -457,7 +461,7 @@ export const BlockView: FC<Props> = ({
               style={{ backgroundColor: "var(--code-block-bg)", color: "var(--code-block-text)", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
               <code dangerouslySetInnerHTML={{ __html: linedHtml || `<span class="line">&nbsp;</span>` }} />
             </pre>
-            <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+            <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
               onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="relative px-4 py-3 font-mono text-sm leading-relaxed outline-none"
@@ -552,7 +556,7 @@ export const BlockView: FC<Props> = ({
     if (block.type === "quote") return (
       <div className="flex rounded-r-lg"
         style={{ backgroundColor: "color-mix(in srgb, var(--accent-warm) 8%, transparent)", borderLeft: "4px solid var(--accent-warm)" }}>
-        <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+        <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 px-4 py-3 outline-none italic"
@@ -605,7 +609,7 @@ export const BlockView: FC<Props> = ({
               </div>
             )}
           </div>
-          <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+          <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="w-full py-0.5 outline-none"
@@ -619,7 +623,7 @@ export const BlockView: FC<Props> = ({
     if (block.type === "ul") return (
       <div className="flex" style={{ paddingLeft: 0 }}>
         <div className="w-6 shrink-0 text-right pr-2 font-mono text-sm" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>•</div>
-        <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+        <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="w-full py-0.5 outline-none"
@@ -637,7 +641,7 @@ export const BlockView: FC<Props> = ({
             style={{ borderColor: block.checked ? "var(--accent)" : "var(--border)", backgroundColor: block.checked ? "var(--accent)" : "var(--bg-card)" }}>
             {block.checked && <span className="text-white text-[10px] font-bold">✓</span>}
           </button>
-          <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+          <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
@@ -657,7 +661,7 @@ export const BlockView: FC<Props> = ({
             const idx = types.indexOf(block.calloutType || "info");
             onChange({ ...block, calloutType: types[(idx + 1) % types.length] });
           }}>{preset.icon}</span>
-          <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+          <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
@@ -727,7 +731,7 @@ export const BlockView: FC<Props> = ({
           <button onClick={toggle} className="w-5 h-5 flex items-center justify-center rounded hover:bg-[var(--bg-subtle)] transition-transform shrink-0 mt-0.5"
             style={{ transform: block.collapsed ? "rotate(-90deg)" : "rotate(0deg)", color: "var(--text-secondary)" }}>▶</button>
           <div className="flex-1 min-w-0">
-            <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+            <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
               onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="w-full outline-none"
@@ -845,7 +849,7 @@ export const BlockView: FC<Props> = ({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex gap-4 items-start">
-              <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+              <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
                 onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
                 onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
                 className="flex-1 min-w-0 outline-none"
@@ -893,7 +897,7 @@ export const BlockView: FC<Props> = ({
     // 非 ordered 的标题/正文
     return (
       <div className="flex gap-4 items-start">
-        <ContentEditableArea html={block.html} innerRef={edRef} onChange={(html) => onChange({ ...block, html })}
+        <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 min-w-0 outline-none"
