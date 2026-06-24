@@ -1,6 +1,6 @@
 /**
  * ContentEditableArea.tsx — 通用可编辑区域组件
- * [核心职责] 封装 contentEditable div，提供防抖 onChange、图片粘贴/拖拽、链接自动识别、placeholder
+ * [核心职责] 封装 contentEditable div，提供同步 onChange、图片粘贴/拖拽、链接自动识别、placeholder
  * [Android 类比] 自定义 EditText View，处理所有输入事件
  */
 
@@ -21,18 +21,15 @@ interface Props {
   onFocus?: () => void;
   onBlur?: () => void;
   spellCheck?: boolean;
-  flushRef?: React.RefObject<(() => string) | null>;
 }
 
 export const ContentEditableArea: FC<Props> = ({
   html, onChange, onKeyDown, onPasteImg, onDropImg,
-  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck, flushRef,
+  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck,
 }) => {
   const ref = innerRef || useRef<HTMLDivElement>(null);
   const isInternalUpdate = useRef(false);
   const prevHtml = useRef(html);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingHtml = useRef<string | null>(null);
 
   // 初始化：同步外部html到DOM
   useEffect(() => {
@@ -65,66 +62,16 @@ export const ContentEditableArea: FC<Props> = ({
       prevHtml.current = html;
       return;
     }
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-      pendingHtml.current = null;
-    }
     syncToDom(html);
   }, [html]);
 
-  /** 用户输入处理：50ms短防抖后上报（减少竞态问题） */
+  /** 用户输入处理：立即上报，不用防抖 */
   const handleInput = (e: FormEvent<HTMLDivElement>) => {
     const newHtml = (e.currentTarget as HTMLDivElement).innerHTML;
-    pendingHtml.current = newHtml;
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      debounceTimer.current = null;
-      const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
-        isInternalUpdate.current = true;
-        prevHtml.current = pending;
-        onChange(pending);
-      }
-      pendingHtml.current = null;
-    }, 50);
+    isInternalUpdate.current = true;
+    prevHtml.current = newHtml;
+    onChange(newHtml);
   };
-
-  /** 失焦时立即提交未上报的内容 */
-  const flushDebounce = () => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-      const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
-        isInternalUpdate.current = true;
-        prevHtml.current = pending;
-        onChange(pending);
-      }
-      pendingHtml.current = null;
-    }
-  };
-
-  /** 立即提交防抖内容并返回最新DOM值（供键盘事件使用） */
-  const flushAndGetHtml = (): string => {
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current);
-      debounceTimer.current = null;
-      const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
-        isInternalUpdate.current = true;
-        prevHtml.current = pending;
-        onChange(pending);
-      }
-      pendingHtml.current = null;
-    }
-    return ref.current?.innerHTML || "";
-  };
-
-  // 暴露给父组件
-  useEffect(() => {
-    if (flushRef) flushRef.current = flushAndGetHtml;
-  }, [flushRef]);
 
   /** 粘贴处理：图片优先，然后URL自动链接 */
   const handlePaste = (e: ClipboardEvent<HTMLDivElement>) => {
@@ -169,17 +116,9 @@ export const ContentEditableArea: FC<Props> = ({
       onInput={handleInput} onKeyDown={onKeyDown} onPaste={handlePaste}
       onDragOver={handleDragOver} onDrop={handleDrop}
       onFocus={() => { isInternalUpdate.current = true; onFocus?.(); }}
-      onBlur={() => { flushDebounce(); onBlur?.(); }}
+      onBlur={() => { onBlur?.(); }}
       className={className} style={style} spellCheck={spellCheck ?? false}
       data-placeholder={placeholder || ""}
-      data-flush={flushAndGetHtml}
     />
   );
-};
-
-/** 强制提交防抖中的未上报内容 */
-export function flushContentEditable(ref: React.RefObject<HTMLDivElement | null>) {
-  if (!ref?.current) return;
-  // 触发blur事件来调用flushDebounce
-  ref.current.dispatchEvent(new Event('blur', { bubbles: true }));
 };

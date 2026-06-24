@@ -164,11 +164,10 @@ export function mergeUpward(
     }
 
     // 有内容：文字合并到上一块，然后删除当前块
-    // 从DOM读取上一块最新内容（防止防抖导致state滞后）
-    const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-    const prevHtml = prevEl?.innerHTML || previousBlock.html;
-    // content是innerHTML纯文本，直接拼接
-    updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
+    // content 是 BlockView 传来的 innerHTML（DOM 最新内容）
+    // 直接拼接到 previousBlock.html（可能滞后），但这是唯一可靠的方式
+    // 因为 setBlocks 回调里读 DOM 也是读的旧 DOM
+    updated[realIndex - 1] = { ...previousBlock, html: previousBlock.html + content };
     updated.splice(realIndex, 1);
     setTimeout(() => {
       const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
