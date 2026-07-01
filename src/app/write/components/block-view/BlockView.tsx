@@ -155,7 +155,7 @@ export const BlockView: FC<Props> = ({
     } else {
       onChange({ ...block, type, html: block.html, ordered: undefined });
     }
-    setTimeout(() => edRef.current?.focus(), 10);
+    setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 10);
   };
 
   // 图片粘贴/拖拽处理
@@ -230,13 +230,13 @@ export const BlockView: FC<Props> = ({
             // 有内容→延续下一个有序块
             onEnter("", block.type as BType, index, block.ordered || false);
           }
-          setTimeout(() => edRef.current?.focus(), 0);
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         } else {
           // 其他列表（ul/todo）空行→退为段落
           const exitType = ["ul", "todo"].includes(block.type) ? "p" : block.type;
           if (exitType !== block.type) {
             onChange({ ...block, type: exitType });
-            setTimeout(() => edRef.current?.focus(), 0);
+            setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
           } else {
             onEnter("", exitType, index, false);
           }
@@ -258,7 +258,7 @@ export const BlockView: FC<Props> = ({
             } else {
               onChange({ ...block, type: "p" });
             }
-            setTimeout(() => edRef.current?.focus(), 0);
+            setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
           } else {
             // 有序块有内容：新生成的块转为ol类型以继承编号
             onEnter("", block.type as BType, index, block.ordered || false);
@@ -327,16 +327,10 @@ export const BlockView: FC<Props> = ({
       // 光标在行首：触发块操作
       e.preventDefault();
 
-      // 有序覆盖层：飞书模式——有内容合并到上一块，空块脱ordered
+      // 有序覆盖层：缓冲带模式——退为普通标题/段落（光标在行首）
       if (block.ordered) {
-        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
-        if (_hasContent) {
-          flushRef.current?.();
-          onBackspace(edEl.innerHTML || "");
-        } else {
-          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
-          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
-        }
+        onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+        setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         return;
       }
 
@@ -361,18 +355,10 @@ export const BlockView: FC<Props> = ({
         return;
       }
 
-      // 有序/无序/待办列表：飞书模式——有内容合并到上一块，空列表退为段落
+      // 有序/无序/待办列表：缓冲带模式——退为段落，光标在行首（第二次Backspace合并）
       if (["ol", "ul", "todo"].includes(block.type)) {
-        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
-        if (_hasContent) {
-          // 有内容：直接合并到上一块（飞书模式）
-          flushRef.current?.();
-          onBackspace(edEl.innerHTML || "");
-        } else {
-          // 空列表：退为段落
-          onChange({ ...block, type: "p" });
-          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
-        }
+        onChange({ ...block, type: "p" });
+        setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         return;
       }
 
@@ -423,7 +409,7 @@ export const BlockView: FC<Props> = ({
             } else {
               onChange({ ...block, type: "p" });
             }
-            setTimeout(() => edRef.current?.focus(), 0);
+            setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
           } else {
             // 普通段落空块→删除
             onDeleteDown?.();
@@ -443,7 +429,7 @@ export const BlockView: FC<Props> = ({
           } else {
             onChange({ ...block, type: "p" });
           }
-          setTimeout(() => edRef.current?.focus(), 0);
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         } else {
           onDeleteDown?.();
         }
