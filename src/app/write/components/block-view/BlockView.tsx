@@ -221,22 +221,19 @@ export const BlockView: FC<Props> = ({
         // 光标在行首/行尾按Enter
         // 区分：块本身为空 vs 块有内容但光标在行首/尾
         const isBlockEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
-        if (block.ordered) {
+        const isOrderedBlock = block.type === "ol" || block.ordered;
+        if (isOrderedBlock) {
+          // 有序块统一处理：ol类型 + ordered覆盖层
           if (isBlockEmpty) {
-            // 有序覆盖层空块→脱ordered
-            onChange({ ...block, ordered: undefined });
+            // 空块→退出有序列表
+            if (block.ordered) {
+              onChange({ ...block, ordered: undefined });
+            } else {
+              onChange({ ...block, type: "p" });
+            }
           } else {
-            // 有序覆盖层有内容→延续下一个有序块
-            onEnter("", block.type as BType, index, true);
-          }
-          setTimeout(() => edRef.current?.focus(), 0);
-        } else if (block.type === "ol") {
-          // 有序列表空块→退为段落（退出有序列表）
-          // 有序列表有内容→延续下一个有序项
-          if (isBlockEmpty) {
-            onChange({ ...block, type: "p" });
-          } else {
-            onEnter("", "ol", index, false);
+            // 有内容→延续下一个有序块
+            onEnter("", block.type as BType, index, block.ordered || false);
           }
           setTimeout(() => edRef.current?.focus(), 0);
         } else {
@@ -269,7 +266,7 @@ export const BlockView: FC<Props> = ({
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
             // 有序块有内容：新生成的块转为ol类型以继承编号
-            onEnter("", "ol", index, false);
+            onEnter("", block.type as BType, index, block.ordered || false);
           }
         } else if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
           // 普通列表块（非ordered覆盖层）
@@ -335,15 +332,11 @@ export const BlockView: FC<Props> = ({
       // 光标在行首：触发块操作
       e.preventDefault();
 
-      // 有序覆盖层：有内容→脱ordered，空→合并到上一块
+      // 有序覆盖层：统一使用缓冲带模式（与ol/ul/todo一致）
       if (block.ordered) {
-        if (block.html.replace(/<[^>]+>/g, "").trim()) {
-          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
-          setTimeout(() => edRef.current?.focus(), 0);
-        } else {
-          flushRef.current?.();
-          onBackspace("");
-        }
+        onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+        justDemotedRef.current = true;
+        setTimeout(() => edRef.current?.focus(), 0);
         return;
       }
 
@@ -417,8 +410,13 @@ export const BlockView: FC<Props> = ({
           e.preventDefault();
           flushRef.current?.();
           // 有序列表空块→降级为普通段落，不是删除
-          if (["ol", "ul", "todo"].includes(block.type)) {
-            onChange({ ...block, type: "p" });
+          if (["ol", "ul", "todo"].includes(block.type) || block.ordered) {
+            // 有序列表空块→降级为普通段落，ordered覆盖层→脱ordered
+            if (block.ordered) {
+              onChange({ ...block, ordered: undefined });
+            } else {
+              onChange({ ...block, type: "p" });
+            }
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
             // 普通段落空块→删除
@@ -432,8 +430,13 @@ export const BlockView: FC<Props> = ({
         // 光标在行首且在行尾（空块）：有序列表降级，普通段落删除
         e.preventDefault();
         flushRef.current?.();
-        if (["ol", "ul", "todo"].includes(block.type)) {
-          onChange({ ...block, type: "p" });
+        if (["ol", "ul", "todo"].includes(block.type) || block.ordered) {
+          // ordered覆盖层→脱ordered，其他列表→退为段落
+          if (block.ordered) {
+            onChange({ ...block, ordered: undefined });
+          } else {
+            onChange({ ...block, type: "p" });
+          }
           setTimeout(() => edRef.current?.focus(), 0);
         } else {
           onDeleteDown?.();
