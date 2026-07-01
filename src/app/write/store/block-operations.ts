@@ -56,6 +56,11 @@ export function splitBlock(
   const newType: BType = keepOrdered ? (blockType || "p") : (inheritTypes.includes(blockType || "") ? (blockType || "p") : "p");
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
+  // Bug #7 修复：如果当前块有 restartNumbering，新块也应继承
+  const currentIdx = blocks.findIndex((b) => b.id === id);
+  if (currentIdx >= 0 && blocks[currentIdx].restartNumbering && (newType === "ol" || keepOrdered)) {
+    newBlock.restartNumbering = true;
+  }
   if (keepOrdered) newBlock.ordered = true;
   pushSnapshot();
   setBlocks((prev) => {

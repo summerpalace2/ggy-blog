@@ -65,8 +65,6 @@ export const BlockView: FC<Props> = ({
   const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 标题降级跟踪：标题→段落后，再按Backspace直接删除而非合并
-  const justDemotedRef = useRef(false);
   // 图片缩放相关
   const imgRef = useRef<HTMLImageElement>(null);
   const imgDragRef = useRef<{ startX: number; startW: number; imgLeft: number; imgWidth: number } | null>(null);
@@ -89,9 +87,6 @@ export const BlockView: FC<Props> = ({
       return () => clearTimeout(timer);
     }
   }, [block.id]);
-
-  // 内容编辑后重置降级标记
-  useEffect(() => { justDemotedRef.current = false; }, [block.html]);
 
   // ── 点击链接直接跳转 ──
   useEffect(() => {
@@ -221,22 +216,19 @@ export const BlockView: FC<Props> = ({
         // 光标在行首/行尾按Enter
         // 区分：块本身为空 vs 块有内容但光标在行首/尾
         const isBlockEmpty = !block.html.replace(/<[^>]+>/g, "").trim();
-        if (block.ordered) {
+        const isOrderedBlock = block.type === "ol" || block.ordered;
+        if (isOrderedBlock) {
+          // 有序块统一处理：ol类型 + ordered覆盖层
           if (isBlockEmpty) {
-            // 有序覆盖层空块→脱ordered
-            onChange({ ...block, ordered: undefined });
+            // 空块→退出有序列表
+            if (block.ordered) {
+              onChange({ ...block, ordered: undefined });
+            } else {
+              onChange({ ...block, type: "p" });
+            }
           } else {
-            // 有序覆盖层有内容→延续下一个有序块
-            onEnter("", block.type as BType, index, true);
-          }
-          setTimeout(() => edRef.current?.focus(), 0);
-        } else if (block.type === "ol") {
-          // 有序列表空块→退为段落（退出有序列表）
-          // 有序列表有内容→延续下一个有序项
-          if (isBlockEmpty) {
-            onChange({ ...block, type: "p" });
-          } else {
-            onEnter("", "ol", index, false);
+            // 有内容→延续下一个有序块
+            onEnter("", block.type as BType, index, block.ordered || false);
           }
           setTimeout(() => edRef.current?.focus(), 0);
         } else {
@@ -269,7 +261,7 @@ export const BlockView: FC<Props> = ({
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
             // 有序块有内容：新生成的块转为ol类型以继承编号
-            onEnter("", "ol", index, false);
+            onEnter("", block.type as BType, index, block.ordered || false);
           }
         } else if (["ol", "ul", "todo"].includes(block.type) && !afterText) {
           // 普通列表块（非ordered覆盖层）
@@ -335,14 +327,15 @@ export const BlockView: FC<Props> = ({
       // 光标在行首：触发块操作
       e.preventDefault();
 
-      // 有序覆盖层：有内容→脱ordered，空→合并到上一块
+      // 有序覆盖层：飞书模式——有内容合并到上一块，空块脱ordered
       if (block.ordered) {
-        if (block.html.replace(/<[^>]+>/g, "").trim()) {
-          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
-          setTimeout(() => edRef.current?.focus(), 0);
-        } else {
+        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
+        if (_hasContent) {
           flushRef.current?.();
-          onBackspace("");
+          onBackspace(edEl.innerHTML || "");
+        } else {
+          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         }
         return;
       }
@@ -354,7 +347,7 @@ export const BlockView: FC<Props> = ({
           onBackspace("");
         } else {
           onChange({ ...block, type: "p" });
-          justDemotedRef.current = true;
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         }
         return;
       }
@@ -368,12 +361,18 @@ export const BlockView: FC<Props> = ({
         return;
       }
 
-      // 有序/无序/待办列表：有内容→退为段落，空→退为段落后合并到上一块
+      // 有序/无序/待办列表：飞书模式——有内容合并到上一块，空列表退为段落
       if (["ol", "ul", "todo"].includes(block.type)) {
-        // 空列表或有内容→都退为段落（列表缓冲带）
-        onChange({ ...block, type: "p" });
-        justDemotedRef.current = true;
-        setTimeout(() => edRef.current?.focus(), 0);
+        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
+        if (_hasContent) {
+          // 有内容：直接合并到上一块（飞书模式）
+          flushRef.current?.();
+          onBackspace(edEl.innerHTML || "");
+        } else {
+          // 空列表：退为段落
+          onChange({ ...block, type: "p" });
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
+        }
         return;
       }
 
@@ -417,8 +416,13 @@ export const BlockView: FC<Props> = ({
           e.preventDefault();
           flushRef.current?.();
           // 有序列表空块→降级为普通段落，不是删除
-          if (["ol", "ul", "todo"].includes(block.type)) {
-            onChange({ ...block, type: "p" });
+          if (["ol", "ul", "todo"].includes(block.type) || block.ordered) {
+            // 有序列表空块→降级为普通段落，ordered覆盖层→脱ordered
+            if (block.ordered) {
+              onChange({ ...block, ordered: undefined });
+            } else {
+              onChange({ ...block, type: "p" });
+            }
             setTimeout(() => edRef.current?.focus(), 0);
           } else {
             // 普通段落空块→删除
@@ -432,8 +436,13 @@ export const BlockView: FC<Props> = ({
         // 光标在行首且在行尾（空块）：有序列表降级，普通段落删除
         e.preventDefault();
         flushRef.current?.();
-        if (["ol", "ul", "todo"].includes(block.type)) {
-          onChange({ ...block, type: "p" });
+        if (["ol", "ul", "todo"].includes(block.type) || block.ordered) {
+          // ordered覆盖层→脱ordered，其他列表→退为段落
+          if (block.ordered) {
+            onChange({ ...block, ordered: undefined });
+          } else {
+            onChange({ ...block, type: "p" });
+          }
           setTimeout(() => edRef.current?.focus(), 0);
         } else {
           onDeleteDown?.();
@@ -611,7 +620,7 @@ export const BlockView: FC<Props> = ({
           if (["h1", "h2", "h3", "h4", "h5"].includes(blks[i]?.type || "") && i > index) { scopeEnd = i; break; }
         }
         for (let i = scopeStart; i < scopeEnd; i++) {
-          if (blks[i]?.type === "ol" || blks[i]?.ordered) totalInGroup++;
+          if (blks[i]?.type === "ol") totalInGroup++;
         }
       }
 
