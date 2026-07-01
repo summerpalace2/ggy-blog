@@ -65,8 +65,6 @@ export const BlockView: FC<Props> = ({
   const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 标题降级跟踪：标题→段落后，再按Backspace直接删除而非合并
-  const justDemotedRef = useRef(false);
   // 图片缩放相关
   const imgRef = useRef<HTMLImageElement>(null);
   const imgDragRef = useRef<{ startX: number; startW: number; imgLeft: number; imgWidth: number } | null>(null);
@@ -89,9 +87,6 @@ export const BlockView: FC<Props> = ({
       return () => clearTimeout(timer);
     }
   }, [block.id]);
-
-  // 内容编辑后重置降级标记
-  useEffect(() => { justDemotedRef.current = false; }, [block.html]);
 
   // ── 点击链接直接跳转 ──
   useEffect(() => {
@@ -332,11 +327,16 @@ export const BlockView: FC<Props> = ({
       // 光标在行首：触发块操作
       e.preventDefault();
 
-      // 有序覆盖层：统一使用缓冲带模式（与ol/ul/todo一致）
+      // 有序覆盖层：飞书模式——有内容合并到上一块，空块脱ordered
       if (block.ordered) {
-        onChange({ ...block, ordered: undefined, restartNumbering: undefined });
-        justDemotedRef.current = true;
-        setTimeout(() => edRef.current?.focus(), 0);
+        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
+        if (_hasContent) {
+          flushRef.current?.();
+          onBackspace(edEl.innerHTML || "");
+        } else {
+          onChange({ ...block, ordered: undefined, restartNumbering: undefined });
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
+        }
         return;
       }
 
@@ -347,7 +347,7 @@ export const BlockView: FC<Props> = ({
           onBackspace("");
         } else {
           onChange({ ...block, type: "p" });
-          justDemotedRef.current = true;
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
         }
         return;
       }
@@ -361,12 +361,18 @@ export const BlockView: FC<Props> = ({
         return;
       }
 
-      // 有序/无序/待办列表：有内容→退为段落，空→退为段落后合并到上一块
+      // 有序/无序/待办列表：飞书模式——有内容合并到上一块，空列表退为段落
       if (["ol", "ul", "todo"].includes(block.type)) {
-        // 空列表或有内容→都退为段落（列表缓冲带）
-        onChange({ ...block, type: "p" });
-        justDemotedRef.current = true;
-        setTimeout(() => edRef.current?.focus(), 0);
+        const _hasContent = block.html.replace(/<[^>]+>/g, "").trim();
+        if (_hasContent) {
+          // 有内容：直接合并到上一块（飞书模式）
+          flushRef.current?.();
+          onBackspace(edEl.innerHTML || "");
+        } else {
+          // 空列表：退为段落
+          onChange({ ...block, type: "p" });
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
+        }
         return;
       }
 
