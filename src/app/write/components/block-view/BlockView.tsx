@@ -611,7 +611,7 @@ export const BlockView: FC<Props> = ({
           if (["h1", "h2", "h3", "h4", "h5"].includes(blks[i]?.type || "") && i > index) { scopeEnd = i; break; }
         }
         for (let i = scopeStart; i < scopeEnd; i++) {
-          if (blks[i]?.type === "ol" || blks[i]?.ordered) totalInGroup++;
+          if (blks[i]?.type === "ol") totalInGroup++;
         }
       }
 
