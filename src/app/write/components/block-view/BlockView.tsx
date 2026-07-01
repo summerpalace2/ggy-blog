@@ -14,7 +14,7 @@ import {
 import { TypePicker } from "../TypePicker";
 import {
   highlightCode, readFileAsDataUrl, imageBlockHtml, escapeHtml,
-  setCursorToEnd,
+  setCursorToEnd, setCursorToStart,
 } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
 
