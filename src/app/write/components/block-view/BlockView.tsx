@@ -14,7 +14,7 @@ import {
 import { TypePicker } from "../TypePicker";
 import {
   highlightCode, readFileAsDataUrl, imageBlockHtml, escapeHtml,
-  setCursorToEnd,
+  setCursorToEnd, setCursorToStart,
 } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
 
@@ -213,6 +213,7 @@ export const BlockView: FC<Props> = ({
       }
       if (isComposing.current || processingEnter.current) return;
       processingEnter.current = true;
+      flushRef.current?.(); // [Fix-B] flush debounce to prevent split race
       e.preventDefault();
       const el = edRef.current; if (!el) return;
       const splitResult = splitHtmlAtCursor(el);
@@ -250,9 +251,8 @@ export const BlockView: FC<Props> = ({
           }
         }
       } else {
-        // Enter拆分：直接从DOM读取最新内容上报
-        const currentHtml = el.innerHTML;
-        onChange({ ...block, html: currentHtml });
+        // Enter拆分：直接使用 splitResult.before（光标前内容）更新当前块
+        onChange({ ...block, html: splitResult.before });
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
         // 有序覆盖层（ordered标题/段落）也按同样逻辑处理
@@ -276,7 +276,7 @@ export const BlockView: FC<Props> = ({
           onEnter("", block.type, index, false);
         } else {
           // 非空行Enter拆分：检查当前块是否为有序覆盖层
-          const shortcut = detectMarkdownShortcut(afterText);
+          const shortcut = !["ol", "ul", "todo"].includes(block.type) ? detectMarkdownShortcut(afterText) : null;
           const baseType = shortcut ? shortcut.type : block.type;
           let newType: BType;
           let keepOrdered = false;
@@ -346,15 +346,20 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 有序/无序/待办列表：有内容→退为段落
+        // 有序/无序/待办列表：空项退为段落，有内容则合并到上一块
         if (["ol", "ul", "todo"].includes(block.type)) {
-          if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            flushRef.current?.();
-            onBackspace(edEl.innerText || "");
+          flushRef.current?.();
+          const isListEmpty = !edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
+          if (isListEmpty) {
+            // 空列表项：退为段落
+            onChange({ ...block, type: "p", html: edEl.innerHTML });
+            setTimeout(() => {
+              const el = edRef.current;
+              if (el) setCursorToStart(el);
+            }, 0);
           } else {
-            onChange({ ...block, type: "p" });
-            justDemotedRef.current = true;
-            setTimeout(() => edRef.current?.focus(), 0);
+            // 有内容的列表项：合并到上一块
+            onBackspace(edEl.innerHTML || "");
           }
           return;
         }

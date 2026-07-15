@@ -57,7 +57,7 @@ export function splitBlock(
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
   if (keepOrdered) newBlock.ordered = true;
-  pushSnapshot();
+  // pushSnapshot() removed here - onChange caller already pushed one snapshot
   setBlocks((prev) => {
     let index = prev.findIndex((b) => b.id === id);
         // 快速连续Enter时块可能尚未入state，用fallbackIndex兜底

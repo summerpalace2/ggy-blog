@@ -21,7 +21,14 @@ export function calculateOlNumber(index: number, blocks: Block[]): number | unde
   const currentIsHeading = ["h1", "h2", "h3", "h4", "h5"].includes(block.type);
   const currentLevel = currentIsHeading ? parseInt(block.type.charAt(1)) : 0;
 
-  if (block.restartNumbering) return olNumber;
+  if (block.restartNumbering) {
+    // 如果前一个块也有 restartNumbering，当前块不应返回 1，而是继续编号
+    if (index > 0 && blocks[index - 1].restartNumbering) {
+      // 继续编号，不返回 1
+    } else {
+      return olNumber;
+    }
+  }
 
   for (let i = index - 1; i >= 0; i--) {
     const t = blocks[i].type;
