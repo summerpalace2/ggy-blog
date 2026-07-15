@@ -401,12 +401,14 @@ export const BlockView: FC<Props> = ({
           justDemotedIdRef.current = null;
           justDemotedHtmlRef.current = null;
           flushRef.current?.();
-          onBackspace(edEl.innerHTML || "");
+          const _v1 = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
+          onBackspace(_v1 ? edEl.innerHTML : "");
           return;
         }
-        // 默认：合并到上一块 (段落直接合并，无需两步)
-        flushRef.current?.(),
-        onBackspace(edEl.innerHTML || "");
+        // 默认：合并到上一块（段落直接合并，无需两步）；可见内容为空则走删除路径
+        flushRef.current?.();
+        const _v0 = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
+        onBackspace(_v0 ? edEl.innerHTML : "");
         return;
       }
     }

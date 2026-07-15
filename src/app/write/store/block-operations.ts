@@ -130,7 +130,6 @@ export function mergeUpward(
 ) {
   pushSnapshot();
   const focusTargetArr: { blockId: string; type: "end" | "offset" | "start"; offset?: number }[] = [];
-  // [Fix flushSync] ??????,???? Backspace ? stale closure
   flushSync(() => {
     setBlocks((prev) => {
       let realIndex = prev.findIndex((b) => b.id === id);
@@ -140,20 +139,21 @@ export function mergeUpward(
       const currentBlock = prev[realIndex];
       if (!currentBlock) return prev;
 
-      const previousBlock = realIndex > 0 ? prev[realIndex - 1] : undefined;
       const updated = [...prev];
-      const isEmptyContent = !content.trim();
+      const isEmptyContent = !content.replace(/<[^>]+>/g, "").trim();
 
-      // ?????????
+      // [修复] 当前块内容为空 -> 删块；聚焦前一有内容块，若无则找后一块
       if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
         if (prev.length <= 1) return prev;
         updated.splice(realIndex, 1);
-        const fi = Math.max(0, realIndex - 1);
+        let fi = realIndex - 1;
+        while (fi >= 0 && !updated[fi]?.html.replace(/<[^>]+>/g, "").trim()) fi--;
+        if (fi < 0) fi = Math.min(realIndex, updated.length - 1);
         focusTargetArr[0] = { blockId: updated[fi]?.id || "", type: "end" };
         return updated;
       }
 
-      // ?????????
+      // 为首块
       if (realIndex <= 0) {
         if (!isEmptyContent) return prev;
         if (prev.length <= 1) return prev;
@@ -162,23 +162,25 @@ export function mergeUpward(
         return updated;
       }
 
-      // ??????????????????
-      if (["code", "hr", "img", "table"].includes(previousBlock!.type)) {
+      const previousBlock = prev[realIndex - 1];
+
+      // 前一块是特殊块(code/hr/img/table) 无法合并 -> 删当前块，聚焦前块
+      if (["code", "hr", "img", "table"].includes(previousBlock.type)) {
         updated.splice(realIndex, 1);
-        focusTargetArr[0] = { blockId: previousBlock!.id, type: "end" };
+        const fi = Math.max(0, realIndex - 1);
+        focusTargetArr[0] = { blockId: updated[fi]?.id || "", type: "end" };
         return updated;
       }
 
-      // ?????????????????????????
-      const prevEl = document.querySelector(`[data-block="${previousBlock!.id}"] [contenteditable]`) as HTMLElement;
-      const prevHtml = prevEl?.innerHTML || previousBlock!.html;
-      updated[realIndex - 1] = { ...previousBlock!, html: prevHtml + content } as Block;
+      // 正常合并: 把 content 拼接到前一块（即使前一块当前为空也合并，把内容移过去）
+      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
+      const prevHtml = prevEl?.innerHTML || previousBlock.html;
+      updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content } as Block;
       updated.splice(realIndex, 1);
-      focusTargetArr[0] = { blockId: previousBlock!.id, type: "offset", offset: prevEl?.innerText?.length || 0 };
+      focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: prevEl?.innerText?.length || 0 };
       return updated;
     });
   });
-  // DOM ?????,????
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
     requestCursorRestoration(ft.blockId, ft.type, ft.offset);
