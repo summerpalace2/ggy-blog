@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ContentEditableArea.tsx — 通用可编辑区域组件
  * [核心职责] 封装 contentEditable div，提供防抖 onChange、图片粘贴/拖拽、链接自动识别、placeholder
  * [Android 类比] 自定义 EditText View，处理所有输入事件
@@ -7,6 +7,7 @@
 "use client";
 
 import { useRef, useEffect, type FC, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
+import { applyPendingCursorRestoration } from "../utils";
 
 interface Props {
   html: string;
@@ -22,11 +23,12 @@ interface Props {
   onBlur?: () => void;
   spellCheck?: boolean;
   flushRef?: React.RefObject<(() => string) | null>;
+  blockId?: string;
 }
 
 export const ContentEditableArea: FC<Props> = ({
   html, onChange, onKeyDown, onPasteImg, onDropImg,
-  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck, flushRef,
+  className, style, placeholder, innerRef, onFocus, onBlur, spellCheck, flushRef, blockId,
 }) => {
   const ref = innerRef || useRef<HTMLDivElement>(null);
   const isInternalUpdate = useRef(false);
@@ -166,11 +168,23 @@ export const ContentEditableArea: FC<Props> = ({
     if (file && file.type.startsWith("image/")) onDropImg(file);
   };
 
+  /**
+   * 焦点处理: onFocus 中恢复光标
+   * 浏览器 focus() 异步重置光标 → 在 onFocus 事件中覆盖光标位置
+   */
+  const handleFocus = () => {
+    isInternalUpdate.current = true;
+    if (blockId && ref.current) {
+      applyPendingCursorRestoration(blockId, ref.current);
+    }
+    onFocus?.();
+  };
+
   return (
     <div ref={ref} contentEditable suppressContentEditableWarning
       onInput={handleInput} onKeyDown={onKeyDown} onPaste={handlePaste}
       onDragOver={handleDragOver} onDrop={handleDrop}
-      onFocus={() => { isInternalUpdate.current = true; onFocus?.(); }}
+      onFocus={handleFocus}
       onBlur={() => { flushDebounce(); onBlur?.(); }}
       className={className} style={style} spellCheck={spellCheck ?? false}
       data-placeholder={placeholder || ""}

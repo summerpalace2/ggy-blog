@@ -1,4 +1,4 @@
-/**
+﻿/**
  * utils.ts — 块编辑器工具函数
  * 包含ID生成、HTML/Markdown互转、DOM操作、快捷键
  */
@@ -260,4 +260,43 @@ export function matchShortcut(event: KeyboardEvent, shortcut: string): boolean {
     && !!event.shiftKey === parts.includes("shift")
     && !!event.altKey === parts.includes("alt")
     && event.key.toLowerCase() === parts[parts.length - 1];
+}
+
+// ── Cursor Restoration (用于可靠的跨块光标恢复) ──
+
+export type CursorPosition = 'start' | 'end' | 'offset';
+
+let _pendingCursor: { blockId: string; type: CursorPosition; offset?: number } | null = null;
+
+/**
+ * 请求光标恢复。实际恢复在 ContentEditableArea 的 onFocus 中执行。
+ * 原理: focus() 是异步的，会重置光标到位置 0。
+ *       用 onFocus 事件覆盖可确保光标在浏览器完成 focus 处理后设置。
+ */
+export function requestCursorRestoration(blockId: string, type: CursorPosition, offset?: number): void {
+  _pendingCursor = { blockId, type, offset };
+}
+
+/**
+ * 应用待处理的光标恢复。在 ContentEditableArea 的 onFocus 中调用。
+ * 返回 true 表示已应用 pending 恢复。
+ */
+export function applyPendingCursorRestoration(blockId: string, el: HTMLElement): boolean {
+  if (_pendingCursor && _pendingCursor.blockId === blockId) {
+    const { type, offset } = _pendingCursor;
+    _pendingCursor = null;
+    if (type === 'start') {
+      setCursorToStart(el);
+    } else if (type === 'end') {
+      setCursorToEnd(el);
+    } else if (type === 'offset' && offset !== undefined) {
+      setCursorToOffset(el, offset);
+    }
+    return true;
+  }
+  return false;
+}
+
+export function clearPendingCursorRestoration(): void {
+  _pendingCursor = null;
 }

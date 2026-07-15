@@ -1,4 +1,4 @@
-/**
+﻿/**
  * store/block-operations.ts — 块操作逻辑
  * [核心职责] 提供块的增删改查操作：插入、删除、拆分、合并、上移下移
  * [Android 类比] Adapter 的 CRUD 方法
@@ -7,7 +7,8 @@
 "use client";
 
 import type { Block, BType } from "../types";
-import { createBlock, generateId, setCursorToEnd, setCursorToStart, setCursorToOffset } from "../utils";
+import { createBlock, generateId, setCursorToEnd, setCursorToStart, setCursorToOffset, requestCursorRestoration } from "../utils";
+// requestCursorRestoration imported from utils above
 
 /**
  * 在指定位置后插入新块
@@ -30,10 +31,10 @@ export function insertAfter(
     updated.splice(index + 1, 0, newBlock);
     return updated;
   });
-  setTimeout(() => {
+  setTimeout(() => { setTimeout(() => {
     const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-    if (el) setCursorToEnd(el);
-  }, 30);
+    if (el) { el.focus(); setCursorToEnd(el); }
+  }, 20); }, 5);
 }
 
 /**
@@ -60,26 +61,28 @@ export function splitBlock(
   // pushSnapshot() removed here - onChange caller already pushed one snapshot
   setBlocks((prev) => {
     let index = prev.findIndex((b) => b.id === id);
-        // 快速连续Enter时块可能尚未入state，用fallbackIndex兜底
-        if (index < 0 && fallbackIndex !== undefined && fallbackIndex >= 0 && fallbackIndex < prev.length) {
-          index = fallbackIndex;
-        }
-        if (index < 0) return prev;
-        const updated = [...prev];
-        updated.splice(index + 1, 0, newBlock);
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-            if (el) setCursorToEnd(el);
-          });
-        }, 20);
-        return updated;
+    // 快速连续Enter时块可能尚未入state，用fallbackIndex兜底
+    if (index < 0 && fallbackIndex !== undefined && fallbackIndex >= 0 && fallbackIndex < prev.length) {
+      index = fallbackIndex;
+    }
+    if (index < 0) return prev;
+    const updated = [...prev];
+    updated.splice(index + 1, 0, newBlock);
+    // [Fix] 通过 onFocus 恢复光标（避免 focus 异步重置）
+    requestCursorRestoration(newBlock.id, "end");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+        if (el) el.focus();
+      });
+    });
+    return updated;
   });
 }
 
 /**
  * 删除指定块
- * @param id - 要删除的块ID
+ * @param id - 要删除的块的ID
  * @param index - 块的索引
  * @param blocks - 当前块列表
  * @param setBlocks - 状态更新函数
@@ -96,12 +99,18 @@ export function removeBlock(
       return [createBlock("p", "")];
     }
     const updated = prev.filter((b) => b.id !== id);
-    setTimeout(() => {
-      const focusIndex = Math.min(index, updated.length - 1);
-      const targetId = updated[focusIndex]?.id;
-      const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
-      if (el) setCursorToEnd(el);
-    }, 10);
+    // [Fix] 通过 onFocus 恢复光标
+    const focusIndex = Math.min(index, updated.length - 1);
+    const targetId = updated[focusIndex]?.id;
+    if (targetId) {
+      requestCursorRestoration(targetId, "end");
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
+        if (el) el.focus();
+      });
+    });
     return updated;
   });
 }
@@ -134,17 +143,21 @@ export function mergeUpward(
     // 空内容：删除当前块
     if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
       if (prev.length <= 1) return prev; // 保留最后一个块
-      // 空列表块也直接删除（不走转段落两步逻辑）
+      // [Fix] 空列表块也直接删除（不走转段落两步逻辑，避免"删块后内容还原"bug）
       updated.splice(realIndex, 1);
-      // 聚焦到上方块
+      // [Fix] 通过 onFocus 恢复光标
       const focusIndex = Math.max(0, realIndex - 1);
       const targetId = updated[focusIndex]?.id;
+      if (targetId) {
+        requestCursorRestoration(targetId, "end");
+      }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
-          if (el) { el.focus(); setCursorToEnd(el); }
+          if (el) el.focus();
         });
       });
+      return updated;
     }
 
     // 没有上一块：不合并
@@ -153,11 +166,15 @@ export function mergeUpward(
       if (!isEmptyContent) return prev;
       if (prev.length <= 1) return prev;
       updated.splice(0, 1);
+      // [Fix] 通过 onFocus 恢复光标
+      const firstId = updated[0]?.id;
+      if (firstId) {
+        requestCursorRestoration(firstId, "end");
+      }
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const tid2 = updated[0]?.id;
-          const el = tid2 ? document.querySelector(`[data-block="${tid2}"] [contenteditable]`) as HTMLElement : null;
-          if (el) { el.focus(); setCursorToEnd(el); }
+          const el = firstId ? document.querySelector(`[data-block="${firstId}"] [contenteditable]`) as HTMLElement : null;
+          if (el) el.focus();
         });
       });
       return updated;
@@ -175,10 +192,14 @@ export function mergeUpward(
     const prevHtml = prevEl?.innerHTML || previousBlock.html;
     updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
+    // [Fix] 通过 onFocus 恢复光标到上一块末尾
+    if (previousBlock.id) {
+      requestCursorRestoration(previousBlock.id, "offset", prevEl?.innerText?.length || 0);
+    }
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) { el.focus(); const _pl = prevEl?.innerText?.length || 0; setCursorToOffset(el, _pl); }
+        if (el) el.focus();
       });
     });
     return updated;
@@ -211,10 +232,16 @@ export function mergeDownward(
       updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
     }
     updated.splice(realIndex, 1);
-    setTimeout(() => {
-      const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-      if (el) setCursorToEnd(el);
-    }, 10);
+    // [Fix] 通过 onFocus 恢复光标
+    if (nextBlock.id) {
+      requestCursorRestoration(nextBlock.id, "start");
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
+        if (el) el.focus();
+      });
+    });
     return updated;
   });
 }
