@@ -10,6 +10,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -273,7 +274,7 @@ export default function WritePage() {
           return (
             <div key={block.id}>
               <BlockView block={block} index={index}
-                onChange={(b) => { pushSnapshot(); setBlocks((prev) => prev.map((bl) => (bl.id === b.id ? b : bl))); }}
+                onChange={(b) => { pushSnapshot(); flushSync(() => { setBlocks((prev) => prev.map((bl) => (bl.id === b.id ? b : bl))); }); }}
                 onEnter={(html, type, fallbackIdx, keepOrdered) => handleSplitBlock(block.id, html, type, fallbackIdx, keepOrdered)}
                 onDelete={() => handleRemoveBlock(block.id, index)}
                 _onInsertAfter={(type) => handleInsertAfter(index, type, "")}

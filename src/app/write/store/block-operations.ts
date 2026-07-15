@@ -1,22 +1,23 @@
-﻿/**
- * store/block-operations.ts — 块操作逻辑
- * [核心职责] 提供块的增删改查操作：插入、删除、拆分、合并、上移下移
- * [Android 类比] Adapter 的 CRUD 方法
+/**
+ * store/block-operations.ts ? ?????
+ * [????] ???????????????????????????
+ * [Android ??] Adapter ? CRUD ??
  */
 
 "use client";
 
+import { flushSync } from "react-dom";
 import type { Block, BType } from "../types";
-import { createBlock, generateId, setCursorToEnd, setCursorToStart, setCursorToOffset, requestCursorRestoration } from "../utils";
+import { createBlock, requestCursorRestoration } from "../utils";
 // requestCursorRestoration imported from utils above
 
 /**
- * 在指定位置后插入新块
- * @param index - 插入位置的索引
- * @param type - 新块类型，默认 "p"
- * @param html - 新块内容，默认 ""
- * @param blocks - 当前块列表（用于查找新块DOM）
- * @param setBlocks - 状态更新函数
+ * ??????????
+ * @param index - ???????
+ * @param type - ??????? "p"
+ * @param html - ??????? ""
+ * @param blocks - ????????????DOM?
+ * @param setBlocks - ??????
  */
 export function insertAfter(
   index: number, type: BType = "p", html: string,
@@ -26,26 +27,29 @@ export function insertAfter(
   pushSnapshot();
   const newBlock = createBlock(type, html);
   if (type === "ol") newBlock.restartNumbering = false;
-  setBlocks((prev) => {
-    const updated = [...prev];
-    updated.splice(index + 1, 0, newBlock);
-    return updated;
+  // [Fix flushSync] ??????,??????? React ???? stale closure
+  flushSync(() => {
+    setBlocks((prev) => {
+      const updated = [...prev];
+      updated.splice(index + 1, 0, newBlock);
+      return updated;
+    });
   });
-  setTimeout(() => { setTimeout(() => {
-    const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-    if (el) { el.focus(); setCursorToEnd(el); }
-  }, 20); }, 5);
+  // DOM ?????,????
+  requestCursorRestoration(newBlock.id, "end");
+  const newEl = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+  if (newEl) newEl.focus();
 }
 
 /**
- * 在光标位置拆分块（Enter触发）
- * @param id - 当前块的ID
- * @param afterHtml - 后半部分内容
- * @param blockType - 新块类型，继承列表类型
- * @param fallbackIndex - 快速Enter的兜底索引
- * @param blocks - 当前块列表
- * @param setBlocks - 状态更新函数
- * @param keepOrdered - 新块是否保持ordered属性（用于有序标题/段落Enter后仍生成有序块）
+ * ?????????Enter???
+ * @param id - ????ID
+ * @param afterHtml - ??????
+ * @param blockType - ???????????
+ * @param fallbackIndex - ??Enter?????
+ * @param blocks - ?????
+ * @param setBlocks - ??????
+ * @param keepOrdered - ??????ordered?????????/??Enter????????
  */
 export function splitBlock(
   id: string, afterHtml: string, blockType: BType | undefined, fallbackIndex: number | undefined,
@@ -53,39 +57,38 @@ export function splitBlock(
   pushSnapshot: () => void, keepOrdered?: boolean,
 ) {
   const inheritTypes = ["ol", "ul", "todo"];
-  // keepOrdered时不降级类型，保持原类型+ordered
+  // keepOrdered????????????+ordered
   const newType: BType = keepOrdered ? (blockType || "p") : (inheritTypes.includes(blockType || "") ? (blockType || "p") : "p");
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
   if (keepOrdered) newBlock.ordered = true;
   // pushSnapshot() removed here - onChange caller already pushed one snapshot
-  setBlocks((prev) => {
-    let index = prev.findIndex((b) => b.id === id);
-    // 快速连续Enter时块可能尚未入state，用fallbackIndex兜底
-    if (index < 0 && fallbackIndex !== undefined && fallbackIndex >= 0 && fallbackIndex < prev.length) {
-      index = fallbackIndex;
-    }
-    if (index < 0) return prev;
-    const updated = [...prev];
-    updated.splice(index + 1, 0, newBlock);
-    // [Fix] 通过 onFocus 恢复光标（避免 focus 异步重置）
-    requestCursorRestoration(newBlock.id, "end");
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) el.focus();
-      });
+  // [Fix flushSync] ??????
+  flushSync(() => {
+    setBlocks((prev) => {
+      let index = prev.findIndex((b) => b.id === id);
+      // ????Enter???????state??fallbackIndex??
+      if (index < 0 && fallbackIndex !== undefined && fallbackIndex >= 0 && fallbackIndex < prev.length) {
+        index = fallbackIndex;
+      }
+      if (index < 0) return prev;
+      const updated = [...prev];
+      updated.splice(index + 1, 0, newBlock);
+      return updated;
     });
-    return updated;
   });
+  // DOM ?????,?? onFocus ????
+  requestCursorRestoration(newBlock.id, "end");
+  const splitEl = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+  if (splitEl) splitEl.focus();
 }
 
 /**
- * 删除指定块
- * @param id - 要删除的块的ID
- * @param index - 块的索引
- * @param blocks - 当前块列表
- * @param setBlocks - 状态更新函数
+ * ?????
+ * @param id - ??????ID
+ * @param index - ????
+ * @param blocks - ?????
+ * @param setBlocks - ??????
  */
 export function removeBlock(
   id: string, index: number,
@@ -93,32 +96,32 @@ export function removeBlock(
   pushSnapshot: () => void,
 ) {
   pushSnapshot();
-  setBlocks((prev) => {
-    if (prev.length <= 1) {
-      // 最后一个块：转为空段落，防止编辑器空白
-      return [createBlock("p", "")];
-    }
-    const updated = prev.filter((b) => b.id !== id);
-    // [Fix] 通过 onFocus 恢复光标
-    const focusIndex = Math.min(index, updated.length - 1);
-    const targetId = updated[focusIndex]?.id;
-    if (targetId) {
-      requestCursorRestoration(targetId, "end");
-    }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
-        if (el) el.focus();
-      });
+  let targetId: string | undefined;
+  // [Fix flushSync] ??????
+  flushSync(() => {
+    setBlocks((prev) => {
+      if (prev.length <= 1) {
+        // ???????????????????
+        return [createBlock("p", "")];
+      }
+      const updated = prev.filter((b) => b.id !== id);
+      const focusIndex = Math.min(index, updated.length - 1);
+      targetId = updated[focusIndex]?.id;
+      return updated;
     });
-    return updated;
   });
+  // DOM ?????,????
+  if (targetId) {
+    requestCursorRestoration(targetId, "end");
+    const el = document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement;
+    if (el) el.focus();
+  }
 }
 
 /**
- * 向上合并（Backspace行首触发）
- * - 空内容：删除当前块
- * - 非空内容：文字合并到上一块（文字守恒：删除块=移动文字）
+ * ?????Backspace?????
+ * - ?????????
+ * - ??????????????????????=?????
  */
 export function mergeUpward(
   id: string, index: number, content: string,
@@ -126,88 +129,66 @@ export function mergeUpward(
   pushSnapshot: () => void,
 ) {
   pushSnapshot();
-  setBlocks((prev) => {
-    let realIndex = prev.findIndex((b) => b.id === id);
-    // id未命中时用传入的index兜底
-    if (realIndex < 0 && index >= 0 && index < prev.length && prev[index]?.id === id) {
-      realIndex = index;
-    }
-    if (realIndex < 0) return prev;
+  const focusTargetArr: { blockId: string; type: "end" | "offset" | "start"; offset?: number }[] = [];
+  // [Fix flushSync] ??????,???? Backspace ? stale closure
+  flushSync(() => {
+    setBlocks((prev) => {
+      let realIndex = prev.findIndex((b) => b.id === id);
+      if (realIndex < 0) realIndex = index >= 0 && index < prev.length ? index : -1;
+      if (realIndex < 0) return prev;
 
-    const currentBlock = prev[realIndex];
-    const previousBlock = prev[realIndex - 1];
-    const updated = [...prev];
-    // 判断内容是否为空（纯文本判断，不依赖HTML标签）
-    const isEmptyContent = !content.trim();
+      const currentBlock = prev[realIndex];
+      if (!currentBlock) return prev;
 
-    // 空内容：删除当前块
-    if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
-      if (prev.length <= 1) return prev; // 保留最后一个块
-      // [Fix] 空列表块也直接删除（不走转段落两步逻辑，避免"删块后内容还原"bug）
-      updated.splice(realIndex, 1);
-      // [Fix] 通过 onFocus 恢复光标
-      const focusIndex = Math.max(0, realIndex - 1);
-      const targetId = updated[focusIndex]?.id;
-      if (targetId) {
-        requestCursorRestoration(targetId, "end");
+      const previousBlock = realIndex > 0 ? prev[realIndex - 1] : undefined;
+      const updated = [...prev];
+      const isEmptyContent = !content.trim();
+
+      // ?????????
+      if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
+        if (prev.length <= 1) return prev;
+        updated.splice(realIndex, 1);
+        const fi = Math.max(0, realIndex - 1);
+        focusTargetArr[0] = { blockId: updated[fi]?.id || "", type: "end" };
+        return updated;
       }
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
-          if (el) el.focus();
-        });
-      });
-      return updated;
-    }
 
-    // 没有上一块：不合并
-    // [Fix] 第一个块：空则删除（若非唯一），有内容则不操作
-    if (realIndex <= 0) {
-      if (!isEmptyContent) return prev;
-      if (prev.length <= 1) return prev;
-      updated.splice(0, 1);
-      // [Fix] 通过 onFocus 恢复光标
-      const firstId = updated[0]?.id;
-      if (firstId) {
-        requestCursorRestoration(firstId, "end");
+      // ?????????
+      if (realIndex <= 0) {
+        if (!isEmptyContent) return prev;
+        if (prev.length <= 1) return prev;
+        updated.splice(0, 1);
+        focusTargetArr[0] = { blockId: updated[0]?.id || "", type: "end" };
+        return updated;
       }
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          const el = firstId ? document.querySelector(`[data-block="${firstId}"] [contenteditable]`) as HTMLElement : null;
-          if (el) el.focus();
-        });
-      });
-      return updated;
-    }
 
-    // 上一块是不可合并类型：直接删除当前块
-    if (["code", "hr", "img", "table"].includes(previousBlock.type)) {
+      // ??????????????????
+      if (["code", "hr", "img", "table"].includes(previousBlock!.type)) {
+        updated.splice(realIndex, 1);
+        focusTargetArr[0] = { blockId: previousBlock!.id, type: "end" };
+        return updated;
+      }
+
+      // ?????????????????????????
+      const prevEl = document.querySelector(`[data-block="${previousBlock!.id}"] [contenteditable]`) as HTMLElement;
+      const prevHtml = prevEl?.innerHTML || previousBlock!.html;
+      updated[realIndex - 1] = { ...previousBlock!, html: prevHtml + content } as Block;
       updated.splice(realIndex, 1);
+      focusTargetArr[0] = { blockId: previousBlock!.id, type: "offset", offset: prevEl?.innerText?.length || 0 };
       return updated;
-    }
-
-    // 文字守恒：把当前块文字追加到上一块，然后删除当前块
-    // 从DOM读取上一块最新内容（防止防抖导致state滞后）
-    const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-    const prevHtml = prevEl?.innerHTML || previousBlock.html;
-    updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
-    updated.splice(realIndex, 1);
-    // [Fix] 通过 onFocus 恢复光标到上一块末尾
-    if (previousBlock.id) {
-      requestCursorRestoration(previousBlock.id, "offset", prevEl?.innerText?.length || 0);
-    }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) el.focus();
-      });
     });
-    return updated;
   });
+  // DOM ?????,????
+  const ft = focusTargetArr[0];
+  if (ft && ft.blockId) {
+    requestCursorRestoration(ft.blockId, ft.type, ft.offset);
+    const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
+    if (el) el.focus();
+  }
 }
 
 /**
- * 向下合并（Delete行尾触发）
+ * ?????Delete?????
  */
 export function mergeDownward(
   id: string, index: number,
@@ -215,39 +196,40 @@ export function mergeDownward(
   pushSnapshot: () => void,
 ) {
   pushSnapshot();
-  setBlocks((prev) => {
-    const realIndex = prev.findIndex((b) => b.id === id);
-    if (realIndex < 0 || realIndex >= prev.length - 1) return prev;
+  let focusBlockId: string | undefined;
+  // [Fix flushSync] ??????
+  flushSync(() => {
+    setBlocks((prev) => {
+      const realIndex = prev.findIndex((b) => b.id === id);
+      if (realIndex < 0 || realIndex >= prev.length - 1) return prev;
 
-    const currentBlock = prev[realIndex];
-    const nextBlock = prev[realIndex + 1];
-    const updated = [...prev];
+      const currentBlock = prev[realIndex];
+      const nextBlock = prev[realIndex + 1];
+      const updated = [...prev];
 
-    // 文字守恒：当前块文字+下一块文字→存入下一块，删除当前块
-    const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-    const nextHtml = nextEl?.innerHTML || nextBlock.html;
-    const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
-    const currentHtml = currentEl?.innerHTML || currentBlock.html;
-    if (nextHtml) {
-      updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
-    }
-    updated.splice(realIndex, 1);
-    // [Fix] 通过 onFocus 恢复光标
-    if (nextBlock.id) {
-      requestCursorRestoration(nextBlock.id, "start");
-    }
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-        if (el) el.focus();
-      });
+      // ??????????+?????????????????
+      const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
+      const nextHtml = nextEl?.innerHTML || nextBlock.html;
+      const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
+      const currentHtml = currentEl?.innerHTML || currentBlock.html;
+      if (nextHtml) {
+        updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
+      }
+      updated.splice(realIndex, 1);
+      focusBlockId = nextBlock.id;
+      return updated;
     });
-    return updated;
   });
+  // DOM ?????,????
+  if (focusBlockId) {
+    requestCursorRestoration(focusBlockId, "start");
+    const el = document.querySelector(`[data-block="${focusBlockId}"] [contenteditable]`) as HTMLElement;
+    if (el) el.focus();
+  }
 }
 
 /**
- * 移动块位置（Alt+上下箭头）
+ * ??????Alt+?????
  */
 export function moveBlock(
   id: string, direction: "up" | "down",
