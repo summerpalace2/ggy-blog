@@ -65,8 +65,9 @@ export const BlockView: FC<Props> = ({
   const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 标题降级跟踪：标题→段落后，再按Backspace直接删除而非合并
-  const justDemotedRef = useRef(false);
+  // 降级跟踪：标题/列表→段落后，下次 Backspace 合并到上一块
+  const justDemotedIdRef = useRef<string | null>(null);
+  const justDemotedHtmlRef = useRef<string | null>(null);
   // 图片缩放相关
   const imgRef = useRef<HTMLImageElement>(null);
   const imgDragRef = useRef<{ startX: number; startW: number; imgLeft: number; imgWidth: number } | null>(null);
@@ -90,8 +91,14 @@ export const BlockView: FC<Props> = ({
     }
   }, [block.id]);
 
-  // 内容编辑后重置降级标记
-  useEffect(() => { justDemotedRef.current = false; }, [block.html]);
+  // 当 block id 不变但 html 变化时（真正编辑）清除降级标记
+  useEffect(() => {
+    if (justDemotedIdRef.current !== block.id) return;
+    if (justDemotedHtmlRef.current !== null && justDemotedHtmlRef.current !== block.html) {
+      justDemotedIdRef.current = null;
+      justDemotedHtmlRef.current = null;
+    }
+  }, [block.id, block.html]);
 
   // ── 点击链接直接跳转 ──
   useEffect(() => {
@@ -336,7 +343,8 @@ export const BlockView: FC<Props> = ({
             onBackspace(edEl.innerText || "");
           } else {
             onChange({ ...block, type: "p" });
-            justDemotedRef.current = true;
+            justDemotedIdRef.current = block.id;
+            justDemotedHtmlRef.current = block.html;
           }
           return;
         }
@@ -346,27 +354,23 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 有序/无序/待办列表：空项退为段落，有内容则合并到上一块
+        // 有序/无序/待办列表：退为段落，下次 BS 才合并到上一块（两步行为统一）
         if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
-          const isListEmpty = !edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
-          if (isListEmpty) {
-            // 空列表项：退为段落
-            onChange({ ...block, type: "p", html: edEl.innerHTML });
-            setTimeout(() => {
-              const el = edRef.current;
-              if (el) setCursorToStart(el);
-            }, 0);
-          } else {
-            // 有内容的列表项：合并到上一块
-            onBackspace(edEl.innerHTML || "");
-          }
+          onChange({ ...block, type: "p", html: edEl.innerHTML });
+          justDemotedIdRef.current = block.id;
+          justDemotedHtmlRef.current = edEl.innerHTML;
+          setTimeout(() => {
+            const el = edRef.current;
+            if (el) setCursorToStart(el);
+          }, 0);
           return;
         }
 
-        // 普通段落/标题降级后的段落：合并到上一块
-        if (justDemotedRef.current) {
-          justDemotedRef.current = false;
+        // 降级为段落后的块：id 匹配时合并到上一块
+        if (justDemotedIdRef.current === block.id) {
+          justDemotedIdRef.current = null;
+          justDemotedHtmlRef.current = null;
           flushRef.current?.();
           onBackspace(edEl.innerText || "");
           return;
