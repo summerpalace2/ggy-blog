@@ -134,28 +134,34 @@ export function mergeUpward(
     // 空内容：删除当前块
     if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
       if (prev.length <= 1) return prev; // 保留最后一个块
-      if (["ol", "ul", "todo"].includes(currentBlock.type)) {
-        // 列表空块：先转段落（给第二次Backspace的机会）
-        updated[realIndex] = { ...currentBlock, type: "p", html: "" };
-        setTimeout(() => {
-          const el = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
-          if (el) setCursorToEnd(el);
-        }, 10);
-        return updated;
-      }
+      // 空列表块也直接删除（不走转段落两步逻辑）
       updated.splice(realIndex, 1);
       // 聚焦到上方块
       const focusIndex = Math.max(0, realIndex - 1);
       const targetId = updated[focusIndex]?.id;
-      setTimeout(() => {
-        const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
-        if (el) setCursorToEnd(el);
-      }, 0);
-      return updated;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const el = targetId ? document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement : null;
+          if (el) { el.focus(); setCursorToEnd(el); }
+        });
+      });
     }
 
     // 没有上一块：不合并
-    if (realIndex <= 0) return prev;
+    // [Fix] 第一个块：空则删除（若非唯一），有内容则不操作
+    if (realIndex <= 0) {
+      if (!isEmptyContent) return prev;
+      if (prev.length <= 1) return prev;
+      updated.splice(0, 1);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const tid2 = updated[0]?.id;
+          const el = tid2 ? document.querySelector(`[data-block="${tid2}"] [contenteditable]`) as HTMLElement : null;
+          if (el) { el.focus(); setCursorToEnd(el); }
+        });
+      });
+      return updated;
+    }
 
     // 上一块是不可合并类型：直接删除当前块
     if (["code", "hr", "img", "table"].includes(previousBlock.type)) {
@@ -169,10 +175,12 @@ export function mergeUpward(
     const prevHtml = prevEl?.innerHTML || previousBlock.html;
     updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content };
     updated.splice(realIndex, 1);
-    setTimeout(() => {
-      const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-      if (el) { const _pl = prevEl?.innerText?.length || 0; setCursorToOffset(el, _pl); }
-    }, 10);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
+        if (el) { el.focus(); const _pl = prevEl?.innerText?.length || 0; setCursorToOffset(el, _pl); }
+      });
+    });
     return updated;
   });
 }

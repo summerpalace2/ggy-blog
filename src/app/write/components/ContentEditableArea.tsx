@@ -33,6 +33,8 @@ export const ContentEditableArea: FC<Props> = ({
   const prevHtml = useRef(html);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingHtml = useRef<string | null>(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
   // 初始化：同步外部html到DOM
   useEffect(() => {
@@ -84,7 +86,7 @@ export const ContentEditableArea: FC<Props> = ({
       if (pending !== null && ref.current && ref.current.innerHTML === pending) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
-        onChange(pending);
+        onChangeRef.current(pending);
       }
       pendingHtml.current = null;
     }, 50);
@@ -99,7 +101,7 @@ export const ContentEditableArea: FC<Props> = ({
       if (pending !== null && ref.current && ref.current.innerHTML === pending) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
-        onChange(pending);
+        onChangeRef.current(pending);
       }
       pendingHtml.current = null;
     }
@@ -114,7 +116,7 @@ export const ContentEditableArea: FC<Props> = ({
       if (pending !== null && ref.current && ref.current.innerHTML === pending) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
-        onChange(pending);
+        onChangeRef.current(pending);
       }
       pendingHtml.current = null;
     }

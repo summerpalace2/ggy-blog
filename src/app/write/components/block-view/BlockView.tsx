@@ -343,6 +343,12 @@ export const BlockView: FC<Props> = ({
             onChange({ ...block, type: "p" });
             justDemotedIdRef.current = block.id;
             justDemotedHtmlRef.current = block.html;
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  const el = edRef.current;
+                  if (el) { el.focus(); setCursorToStart(el); }
+                });
+              });
           }
           return;
         }
@@ -352,16 +358,26 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 有序/无序/待办列表：退为段落，下次 BS 才合并到上一块（两步行为统一）
+        // ??/??/?????????????????????????
         if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
-          onChange({ ...block, type: "p", html: edEl.innerHTML });
-          justDemotedIdRef.current = block.id;
-          justDemotedHtmlRef.current = edEl.innerHTML;
-          setTimeout(() => {
-            const el = edRef.current;
-            if (el) setCursorToStart(el);
-          }, 0);
+          const isListEmpty = !edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
+          if (isListEmpty) {
+            // ??????????????????
+            onBackspace("");
+          } else {
+            // ???????????????????
+            onChange({ ...block, type: "p", html: edEl.innerHTML });
+            justDemotedIdRef.current = block.id;
+            justDemotedHtmlRef.current = edEl.innerHTML;
+            // ? RAF ??????? type ??? DOM ?????????
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                const el = edRef.current;
+                if (el) { el.focus(); setCursorToStart(el); }
+              });
+            });
+          }
           return;
         }
 
@@ -373,22 +389,9 @@ export const BlockView: FC<Props> = ({
           onBackspace(edEl.innerHTML || "");
           return;
         }
-        // [Fix] 段落/默认：两步行为 — 首次清空内容并记录，再次回才真正合并
-        const currentText = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
-        if (currentText) {
-          // 有内容: 清空当前块，记录 justDemoted ref
-          onChange({ ...block, html: "" });
-          justDemotedIdRef.current = block.id;
-          justDemotedHtmlRef.current = "";
-          setTimeout(() => {
-            const el = edRef.current;
-            if (el) setCursorToStart(el);
-          }, 0);
-        } else {
-          // 已清空: 真正合并到上一块
-          flushRef.current?.();
-          onBackspace("");
-        }
+        // 默认：合并到上一块 (段落直接合并，无需两步)
+        flushRef.current?.(),
+        onBackspace(edEl.innerHTML || "");
         return;
       }
     }
