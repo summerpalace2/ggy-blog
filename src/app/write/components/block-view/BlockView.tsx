@@ -260,6 +260,8 @@ export const BlockView: FC<Props> = ({
       } else {
         // Enter拆分：直接使用 splitResult.before（光标前内容）更新当前块
         onChange({ ...block, html: splitResult.before });
+        // [Fix-E] 强制DOM同步：防止debounce在React重渲染前将旧内容回写
+        if (edRef.current) edRef.current.innerHTML = splitResult.before;
         const afterText = splitResult.after.replace(/<[^>]+>/g, "").trim();
         // 列表块末尾Enter：有内容→延续列表，空块→当前块退为段落
         // 有序覆盖层（ordered标题/段落）也按同样逻辑处理
