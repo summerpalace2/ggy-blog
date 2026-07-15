@@ -160,10 +160,8 @@ export const BlockView: FC<Props> = ({
     }
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
   };
 
   // 图片粘贴/拖拽处理
@@ -241,10 +239,8 @@ export const BlockView: FC<Props> = ({
           }
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
         } else if (block.type === "ol") {
           // 有序列表空块→退为段落（退出有序列表）
           // 有序列表有内容→延续下一个有序项
@@ -255,10 +251,8 @@ export const BlockView: FC<Props> = ({
           }
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
         } else {
           // 其他列表（ul/todo）空行→退为段落
           const exitType = ["ul", "todo"].includes(block.type) ? "p" : block.type;
@@ -266,10 +260,8 @@ export const BlockView: FC<Props> = ({
             onChange({ ...block, type: exitType });
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
           } else {
             onEnter("", exitType, index, false);
           }
@@ -294,10 +286,8 @@ export const BlockView: FC<Props> = ({
             }
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
           } else {
             // 有序块有内容：新生成的块转为ol类型以继承编号
             onEnter("", "ol", index, false);
@@ -359,10 +349,8 @@ export const BlockView: FC<Props> = ({
           onChange({ ...block, ordered: undefined, restartNumbering: undefined });
             // [Fix] onFocus restores cursor
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
           return;
         }
 
@@ -376,10 +364,8 @@ export const BlockView: FC<Props> = ({
             justDemotedHtmlRef.current = block.html;
             // [Fix] onFocus restores cursor (focus async resets to pos 0)
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
           }
           return;
         }
@@ -404,10 +390,8 @@ export const BlockView: FC<Props> = ({
             // ? RAF ??????? type ??? DOM ?????????
             // [Fix] onFocus restores cursor (focus async resets to pos 0)
             requestCursorRestoration(block.id, "start");
-            requestAnimationFrame(() => {
-              const el = edRef.current;
-              if (el) el.focus();
-            });
+            const el = edRef.current;
+            if (el) el.focus();
           }
           return;
         }
