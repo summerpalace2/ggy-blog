@@ -184,6 +184,36 @@ export function setCursorToStart(el: HTMLElement) {
   s?.addRange(r);
 }
 
+export function setCursorToOffset(el: HTMLElement, offset: number) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  let charCount = 0;
+  let found = false;
+  function traverse(node: Node) {
+    if (found) return;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = node.textContent?.length || 0;
+      if (charCount + len >= offset) {
+        range.setStart(node, offset - charCount);
+        range.collapse(true);
+        found = true;
+        return;
+      }
+      charCount += len;
+    } else {
+      for (const child of Array.from(node.childNodes)) {
+        traverse(child);
+        if (found) return;
+      }
+    }
+  }
+  traverse(el);
+  if (!found) { range.selectNodeContents(el); range.collapse(false); }
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 export function highlightCode(code: string, lang?: string): string {
   if (!code.trim()) return "";
   try {

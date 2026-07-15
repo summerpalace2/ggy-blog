@@ -7,7 +7,7 @@
 "use client";
 
 import type { Block, BType } from "../types";
-import { createBlock, generateId, setCursorToEnd, setCursorToStart } from "../utils";
+import { createBlock, generateId, setCursorToEnd, setCursorToStart, setCursorToOffset } from "../utils";
 
 /**
  * 在指定位置后插入新块
@@ -171,7 +171,7 @@ export function mergeUpward(
     updated.splice(realIndex, 1);
     setTimeout(() => {
       const el = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-      if (el) setCursorToEnd(el);
+      if (el) { const _pl = prevEl?.innerText?.length || 0; setCursorToOffset(el, _pl); }
     }, 10);
     return updated;
   });

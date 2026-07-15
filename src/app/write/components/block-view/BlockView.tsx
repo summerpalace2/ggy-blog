@@ -90,16 +90,6 @@ export const BlockView: FC<Props> = ({
       return () => clearTimeout(timer);
     }
   }, [block.id]);
-
-  // 当 block id 不变但 html 变化时（真正编辑）清除降级标记
-  useEffect(() => {
-    if (justDemotedIdRef.current !== block.id) return;
-    if (justDemotedHtmlRef.current !== null && justDemotedHtmlRef.current !== block.html) {
-      justDemotedIdRef.current = null;
-      justDemotedHtmlRef.current = null;
-    }
-  }, [block.id, block.html]);
-
   // ── 点击链接直接跳转 ──
   useEffect(() => {
     const el = edRef.current; if (!el) return;
@@ -184,6 +174,12 @@ export const BlockView: FC<Props> = ({
 
   // ── 键盘事件处理（核心交互逻辑）──
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // [Fix] 非 Backspace 按键清除降级标记（用后即焚，消除 useEffect 竞态）
+    if (e.key !== "Backspace" && justDemotedIdRef.current) {
+      justDemotedIdRef.current = null;
+      justDemotedHtmlRef.current = null;
+    }
+
     // Ctrl+B/I/U 快捷键
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
       if (e.key.toLowerCase() === "b") { e.preventDefault(); document.execCommand("bold", false); return; }
@@ -374,13 +370,25 @@ export const BlockView: FC<Props> = ({
           justDemotedIdRef.current = null;
           justDemotedHtmlRef.current = null;
           flushRef.current?.();
-          onBackspace(edEl.innerText || "");
+          onBackspace(edEl.innerHTML || "");
           return;
         }
-
-        // 默认：合并到上一块（文字守恒：删除当前块=把文字移到上一块）
-        flushRef.current?.();
-        onBackspace(edEl.innerText || "");
+        // [Fix] 段落/默认：两步行为 — 首次清空内容并记录，再次回才真正合并
+        const currentText = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
+        if (currentText) {
+          // 有内容: 清空当前块，记录 justDemoted ref
+          onChange({ ...block, html: "" });
+          justDemotedIdRef.current = block.id;
+          justDemotedHtmlRef.current = "";
+          setTimeout(() => {
+            const el = edRef.current;
+            if (el) setCursorToStart(el);
+          }, 0);
+        } else {
+          // 已清空: 真正合并到上一块
+          flushRef.current?.();
+          onBackspace("");
+        }
         return;
       }
     }
