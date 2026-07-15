@@ -8,7 +8,7 @@
 
 import { flushSync } from "react-dom";
 import type { Block, BType } from "../types";
-import { createBlock, requestCursorRestoration } from "../utils";
+import { createBlock, requestCursorRestoration, applyPendingCursorRestoration } from "../utils";
 // requestCursorRestoration imported from utils above
 
 /**
@@ -185,7 +185,10 @@ export function mergeUpward(
   if (ft && ft.blockId) {
     requestCursorRestoration(ft.blockId, ft.type, ft.offset);
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
-    if (el) el.focus();
+    if (el) {
+      el.focus();
+      applyPendingCursorRestoration(ft.blockId, el);
+    }
   }
 }
 
