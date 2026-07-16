@@ -114,7 +114,7 @@ export function removeBlock(
   if (targetId) {
     requestCursorRestoration(targetId, "end");
     const el = document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement;
-    if (el) el.focus();
+    if (el) { el.focus(); applyPendingCursorRestoration(targetId, el); }
   }
 }
 
@@ -241,7 +241,7 @@ export function mergeDownward(
   if (focusBlockId) {
     requestCursorRestoration(focusBlockId, "start");
     const el = document.querySelector(`[data-block="${focusBlockId}"] [contenteditable]`) as HTMLElement;
-    if (el) el.focus();
+    if (el) { el.focus(); applyPendingCursorRestoration(focusBlockId, el); }
   }
 }
 

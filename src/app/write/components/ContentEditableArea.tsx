@@ -7,7 +7,7 @@
 "use client";
 
 import { useRef, useEffect, type FC, type ClipboardEvent, type DragEvent, type FormEvent } from "react";
-import { applyPendingCursorRestoration } from "../utils";
+import { applyPendingCursorRestoration, setCursorToOffset } from "../utils";
 
 interface Props {
   html: string;
@@ -50,15 +50,27 @@ export const ContentEditableArea: FC<Props> = ({
   const syncToDom = (newHtml: string) => {
     if (!ref.current) return;
     if (newHtml !== prevHtml.current) {
-      // 跳过内部更新（由BlockView的Enter/Backspace等主动修改的DOM）
       if (isInternalUpdate.current) {
         prevHtml.current = newHtml;
         return;
+      }
+      // [Fix] save cursor pos before DOM update, restore after
+      const sel = window.getSelection();
+      let offset = 0;
+      if (sel && sel.rangeCount > 0 && document.activeElement === ref.current) {
+        const range = sel.getRangeAt(0);
+        const preRange = document.createRange();
+        preRange.selectNodeContents(ref.current);
+        preRange.setEnd(range.startContainer, range.startOffset);
+        offset = preRange.toString().length;
       }
       if (ref.current.innerHTML !== newHtml) {
         ref.current.innerHTML = newHtml;
       }
       prevHtml.current = newHtml;
+      if (document.activeElement === ref.current) {
+        setCursorToOffset(ref.current, offset);
+      }
     }
   };
 
