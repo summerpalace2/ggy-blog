@@ -29,6 +29,7 @@ interface Props {
   onPasteImg: (file: File) => void;
   onDropImg: (file: File) => void;
   onBackspace: (content: string) => void;
+  onDeletePrevSpecial: () => void;
   onDeleteDown?: () => void;
   olNumber?: number;
   allBlocks?: Block[];
@@ -36,7 +37,7 @@ interface Props {
 
 export const BlockView: FC<Props> = ({
   block, index, onChange, onEnter, onDelete, _onInsertAfter: _,
-  onPasteImg, onDropImg, onBackspace, onDeleteDown, olNumber, allBlocks,
+  onPasteImg, onDropImg, onBackspace, onDeleteDown, olNumber, allBlocks, onDeletePrevSpecial,
 }) => {
   // ── 状态与引用 ──
   const edRef = useRef<HTMLDivElement>(null);
@@ -374,7 +375,7 @@ export const BlockView: FC<Props> = ({
                 // [Fix] 降级进行中，吞掉BS等恢复完再处理
         // [Diag] 确认listHandler是否到达
         console.log("[listBS] reached, type=" + block.type + " demoting=" + listDemotingRef.current + " html=" + JSON.stringify(edEl ? edEl.innerHTML : "NULL"));
-        if (listDemotingRef.current) { e.preventDefault(); console.log("[listBS] swallowed by lock"); return; }
+        if (listDemotingRef.current) { e.preventDefault(); return; }
 if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
           const _blkId = block.id;

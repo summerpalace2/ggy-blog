@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { flushSync } from "react-dom";
+import { setCursorToStart } from "./utils";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -108,6 +109,29 @@ export default function WritePage() {
 
   const handleRemoveBlock = useCallback((id: string, index: number) => {
     removeBlock(id, index, blocks, setBlocks, pushSnapshot);
+  }, [blocks, setBlocks, pushSnapshot]);
+
+  // [Fix] 删除前一个特殊块(hr/img/table/code)，当前块补位，光标行首
+  const handleRemovePrevSpecial = useCallback((currentId: string, currentIndex: number) => {
+    if (currentIndex <= 0) return;
+    const prevBlock = blocks[currentIndex - 1];
+    if (!["hr", "img", "table", "code"].includes(prevBlock.type)) return;
+    console.log("[page] handleRemovePrevSpecial: deleting", prevBlock.type, "at", currentIndex - 1);
+    // [Fix] 清除原生选区，防止图片选中栏残留在DOM上
+    const _sel = window.getSelection();
+    if (_sel) _sel.removeAllRanges();
+    pushSnapshot();
+    flushSync(() => {
+      setBlocks(prev => {
+        const updated = [...prev];
+        updated.splice(currentIndex - 1, 1);
+        return updated;
+      });
+    });
+    const el = document.querySelector(`[data-block="${currentId}"] [contenteditable]`) as HTMLElement | null;
+      if(el) { el.focus();
+        requestAnimationFrame(() => { setCursorToStart(el); });
+      }
   }, [blocks, setBlocks, pushSnapshot]);
 
   const handleMergeUpward = useCallback((id: string, index: number, content: string) => {
@@ -287,6 +311,7 @@ export default function WritePage() {
                 onDropImg={async (file) => handleDropImage(file, index, block, setBlocks, pushSnapshot)}
                 onBackspace={(content) => handleMergeUpward(block.id, index, content)}
                 onDeleteDown={() => handleMergeDownward(block.id, index)}
+                onDeletePrevSpecial={() => handleRemovePrevSpecial(block.id, index)}
                 olNumber={olNumber}
                 allBlocks={blocks}
               />
