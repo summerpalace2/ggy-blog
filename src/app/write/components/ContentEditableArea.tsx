@@ -64,6 +64,7 @@ export const ContentEditableArea: FC<Props> = ({
         preRange.setEnd(range.startContainer, range.startOffset);
         offset = preRange.toString().length;
       }
+      console.log("[syncUp] newHtml=" + JSON.stringify(newHtml) + " prevHtml=" + JSON.stringify(prevHtml.current) + " domHtml=" + JSON.stringify(ref.current.innerHTML) + " offset=" + offset + " active=" + (document.activeElement === ref.current) + " blockId=" + blockId);
       if (ref.current.innerHTML !== newHtml) {
         ref.current.innerHTML = newHtml;
       }
@@ -197,9 +198,11 @@ export const ContentEditableArea: FC<Props> = ({
    * 浏览器 focus() 异步重置光标 → 在 onFocus 事件中覆盖光标位置
    */
   const handleFocus = () => {
+    console.log("[onFocus] blockId=" + blockId + " active=" + (document.activeElement === ref.current));
     isInternalUpdate.current = true;
     if (blockId && ref.current) {
-      applyPendingCursorRestoration(blockId, ref.current);
+      const applied = applyPendingCursorRestoration(blockId, ref.current);
+      console.log("[onFocus] cursorRestoration applied=" + applied);
     }
     onFocus?.();
   };

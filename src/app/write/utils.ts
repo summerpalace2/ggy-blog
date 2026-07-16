@@ -275,6 +275,7 @@ let _pendingCursor: { blockId: string; type: CursorPosition; offset?: number } |
  */
 export function requestCursorRestoration(blockId: string, type: CursorPosition, offset?: number): void {
   _pendingCursor = { blockId, type, offset };
+  console.log("[requestCursor] blockId=" + blockId + " type=" + type + " offset=" + offset);
 }
 
 /**
