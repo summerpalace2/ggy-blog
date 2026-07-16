@@ -127,8 +127,7 @@ export function mergeUpward(
   blocks: Block[], setBlocks: React.Dispatch<React.SetStateAction<Block[]>>,
   pushSnapshot: () => void,
 ) {
-  console.log("[mergeUpward] id=" + id + " index=" + index + " content=" + JSON.stringify(content) + " blocksCount=" + blocks.length);
-  if (!blocks || blocks.length === 0) { console.log("[mergeUpward] ERROR: blocks is empty!"); return; }
+  if (!blocks || blocks.length === 0) { return; }
   pushSnapshot();
   const focusTargetArr: { blockId: string; type: "end" | "offset" | "start" | "html"; offset?: number; html?: string }[] = [];
   flushSync(() => {
@@ -202,36 +201,29 @@ export function mergeUpward(
       return updated;
     });
   });
-  console.log("[mergeUpward] flushSync done, focusTarget=" + JSON.stringify(focusTargetArr[0]));
-  if (!focusTargetArr[0]) { console.log("[mergeUpward] WARNING: focusTarget is empty!"); }
   // [Fix-ALT] Force DOM sync so useEffect(html) race can't leave DOM stale
-  console.log('[postFlush] focusTargetArr.length=' + focusTargetArr.length + ' arr0=' + JSON.stringify(focusTargetArr[0]) + ' arr1=' + JSON.stringify(focusTargetArr[1]));
   const htmlT = focusTargetArr[1];
   if (htmlT && htmlT.html !== undefined) {
     const tEl = document.querySelector(`[data-block="${htmlT.blockId}"] [contenteditable]`) as HTMLElement;
     if (tEl) {
-      console.log('[forceDOM] blockId=' + htmlT.blockId + ' oldInner=' + JSON.stringify(tEl.innerHTML) + ' newInner=' + JSON.stringify(htmlT.html));
-      if (tEl.innerHTML !== htmlT.html) { tEl.innerHTML = htmlT.html; console.log('[forceDOM] UPDATED'); }
-      else console.log('[forceDOM] SKIP (already same)');
-    } else { console.log('[forceDOM] ELEMENT NOT FOUND for ' + htmlT.blockId); }
-  } else { console.log('[forceDOM] no htmlT'); }
+      if (tEl.innerHTML !== htmlT.html) { tEl.innerHTML = htmlT.html; }
+    }
+  }
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
     if (el) {
       el.focus();
       // [Fix] Direct cursor set with setTimeout to ensure DOM is ready
-      // [Diag] Cancel stale cursor-set timer to avoid apply after DOM changed
+      // Cancel stale cursor-set timer to avoid apply after DOM changed
       const _cursorEl = el;
       const _cursorFt = ft;
       const _cursorBlockId = ft.blockId;
-      console.log("[cursorSet] scheduled, connected=" + _cursorEl.isConnected + " text=" + JSON.stringify(_cursorEl.innerText) + " offset=" + (ft.offset !== undefined ? ft.offset : ft.type) + " blockId=" + _cursorBlockId);
       setTimeout(() => {
-        if (!_cursorEl.isConnected) { console.log("[cursorSet] ABORT el removed from DOM"); return; }
-        console.log("[cursorSet] executing, text=" + JSON.stringify(_cursorEl.innerText) + " active=" + (document.activeElement === _cursorEl));
+        if (!_cursorEl.isConnected) { return; }
         if (ft.type === "start") setCursorToStart(_cursorEl);
         else if (ft.type === "end") setCursorToEnd(_cursorEl);
-        else if (ft.type === "offset" && ft.offset !== undefined) { setCursorToOffset(_cursorEl, ft.offset); console.log("[cursorSet] done offset=" + ft.offset); }
+        else if (ft.type === "offset" && ft.offset !== undefined) { setCursorToOffset(_cursorEl, ft.offset); }
       }, 0);
     }
   }

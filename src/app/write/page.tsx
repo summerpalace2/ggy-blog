@@ -116,7 +116,6 @@ export default function WritePage() {
     if (currentIndex <= 0) return;
     const prevBlock = blocks[currentIndex - 1];
     if (!["hr", "img", "table", "code"].includes(prevBlock.type)) return;
-    console.log("[page] handleRemovePrevSpecial: deleting", prevBlock.type, "at", currentIndex - 1);
     // [Fix] 清除原生选区，防止图片选中栏残留在DOM上
     const _sel = window.getSelection();
     if (_sel) _sel.removeAllRanges();
@@ -135,11 +134,9 @@ export default function WritePage() {
   }, [blocks, setBlocks, pushSnapshot]);
 
   const handleMergeUpward = useCallback((id: string, index: number, content: string) => {
-    console.log("[page] handleMergeUpward id=" + id + " index=" + index + " content=" + JSON.stringify(content) + " blocksCount=" + blocks.length);
     try {
       mergeUpward(id, index, content, blocks, setBlocks, pushSnapshot);
     } catch(e) {
-      console.error("[page] mergeUpward ERROR:", e);
     }
   }, [blocks, setBlocks, pushSnapshot]);
 
@@ -316,9 +313,9 @@ export default function WritePage() {
                 allBlocks={blocks}
               />
               {/* 块间空白：双击新增段落 */}
-              <div className="h-3 cursor-text group/gap" onDoubleClick={() => handleInsertAfter(index, "p", "")} title="双击新增段落">
+              <div className="h-1 cursor-text group/gap" onDoubleClick={() => handleInsertAfter(index, "p", "")} title="双击新增段落">
                 <div className="h-full w-full rounded opacity-0 group-hover/gap:opacity-100 transition-opacity flex items-center justify-center">
-                  <div className="w-8 h-0.5 rounded-full" style={{ backgroundColor: "var(--border)" }} />
+                  <div className="h-0.5 rounded-full" style={{ width: "calc(100% - 32px)", marginLeft: 32, backgroundColor: "var(--border)" }} />
                 </div>
               </div>
             </div>

@@ -337,15 +337,12 @@ export const BlockView: FC<Props> = ({
         preDivPre.appendChild(preRange.cloneContents());
         const visText = preDivPre.innerHTML.replace(/<[^>]+>/g, "").replace(/\s/g, "").replace(/[​﻿]/g, "");
         atStart = visText.length === 0;
-        console.log("[BS] atStart=" + atStart + " type=" + block.type + " html=" + JSON.stringify(block.html) + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : "null") + " visText=" + JSON.stringify(visText));
       }
 
       if (!atStart) {
-        console.log("[BS] atStart=FALSE, cursor NOT at start, type=" + block.type + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : "null"));
       }
       if (atStart) {
         e.preventDefault();
-        console.log("[BS] PATH: type=" + block.type + " ordered=" + !!block.ordered + " html=" + JSON.stringify(block.html) + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : null));
         // 有序覆盖层：先脱ordered
         if (block.ordered && block.html.replace(/<[^>]+>/g, "").trim()) {
           onChange({ ...block, ordered: undefined, restartNumbering: undefined });
@@ -374,7 +371,6 @@ export const BlockView: FC<Props> = ({
                 // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
                 // [Fix] 降级进行中，吞掉BS等恢复完再处理
         // [Diag] 确认listHandler是否到达
-        console.log("[listBS] reached, type=" + block.type + " demoting=" + listDemotingRef.current + " html=" + JSON.stringify(edEl ? edEl.innerHTML : "NULL"));
         if (listDemotingRef.current) { e.preventDefault(); return; }
 if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
@@ -402,18 +398,15 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               requestAnimationFrame(() => {
                 if (document.activeElement === el) {
                   listDemotingRef.current = false;
-                  console.log("[listDemote] restored attempts=" + _att);
                 } else if (_att < 50) {
                   setTimeout(_tryRestore, 8);
                 } else {
                   listDemotingRef.current = false;
-                  console.log("[listDemote] give up");
                 }
               });
               return;
             }
             if (_att < 50) { setTimeout(_tryRestore, 8); }
-            else { listDemotingRef.current = false; console.log("[listDemote] el not found"); }
           };
           _tryRestore();
           return;
@@ -1026,7 +1019,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           )}
         </div>
 
-        {/* 内容区 — 悬浮左侧按钮时显示左侧细线高亮 */}
+        {/* 内容区 */}
         <div className="flex-1 min-w-0 rounded-r-lg"
           style={{ paddingLeft: 4, borderLeft: gutterHovered ? "2px solid var(--accent)" : "2px solid transparent", transition: "border-color 0.15s ease" }}>
           {renderBlockContent()}

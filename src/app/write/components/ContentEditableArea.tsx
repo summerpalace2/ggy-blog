@@ -64,7 +64,6 @@ export const ContentEditableArea: FC<Props> = ({
         preRange.setEnd(range.startContainer, range.startOffset);
         offset = preRange.toString().length;
       }
-      console.log("[syncUp] newHtml=" + JSON.stringify(newHtml) + " prevHtml=" + JSON.stringify(prevHtml.current) + " domHtml=" + JSON.stringify(ref.current.innerHTML) + " offset=" + offset + " active=" + (document.activeElement === ref.current) + " blockId=" + blockId);
       if (ref.current.innerHTML !== newHtml) {
         ref.current.innerHTML = newHtml;
       }
@@ -73,7 +72,6 @@ export const ContentEditableArea: FC<Props> = ({
         setCursorToOffset(ref.current, offset);
       }
   } else if (ref.current) {
-    console.log("[syncUp-SKIPPED] html=" + JSON.stringify(newHtml) + " prevHtml=" + JSON.stringify(prevHtml.current) + " domHtml=" + JSON.stringify(ref.current.innerHTML) + " blockId=" + blockId);
     }
   };
 
@@ -200,7 +198,6 @@ export const ContentEditableArea: FC<Props> = ({
    * 浏览器 focus() 异步重置光标 → 在 onFocus 事件中覆盖光标位置
    */
   const handleFocus = () => {
-    console.log("[onFocus] blockId=" + blockId + " active=" + (document.activeElement === ref.current));
     isInternalUpdate.current = true;
     if (blockId && ref.current) {
       const applied = applyPendingCursorRestoration(blockId, ref.current);
@@ -211,10 +208,8 @@ export const ContentEditableArea: FC<Props> = ({
           const _pre2 = document.createRange();
           _pre2.selectNodeContents(ref.current);
           _pre2.setEnd(_r2.startContainer, _r2.startOffset);
-          console.log("[onFocus] cursor offset after restore=" + _pre2.toString().length + " text=" + JSON.stringify(ref.current.innerText));
         }
       }
-      console.log("[onFocus] cursorRestoration applied=" + applied);
     }
     onFocus?.();
   };
