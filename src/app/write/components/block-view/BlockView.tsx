@@ -41,6 +41,7 @@ export const BlockView: FC<Props> = ({
   // ── 状态与引用 ──
   const edRef = useRef<HTMLDivElement>(null);
   const flushRef = useRef<(() => string) | null>(null);
+  const listDemotingRef = useRef(false); // [Fix] BS锁
   const _focused = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 });
@@ -369,11 +370,11 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
-        if (["ol", "ul", "todo"].includes(block.type)) {
+                // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
+                // [Fix] 降级进行中，吞掉BS等恢复完再处理
+        if (listDemotingRef.current) { e.preventDefault(); return; }
+if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
-          // [Fix] ol→p 渲染树剧变导致DOM销毁重建，edRef会过期
-          // 必须捕获当前光标位置 + 用blockId在新DOM中查找元素
           const _blkId = block.id;
           const _savedOffset = (() => {
             const sel = window.getSelection();
@@ -386,11 +387,32 @@ export const BlockView: FC<Props> = ({
             }
             return 0;
           })();
+          listDemotingRef.current = true;
           onChange({ ...block, type: "p" as const, html: edEl.innerHTML });
-          requestAnimationFrame(() => {
-            const newEl = document.querySelector(`[data-block="${_blkId}"] [contenteditable]`) as HTMLElement | null;
-            if (newEl) { newEl.focus(); setCursorToOffset(newEl, _savedOffset); }
-          });
+          let _att = 0;
+          const _tryRestore = () => {
+            _att++;
+            const el = document.querySelector(`[data-block="${_blkId}"] [contenteditable]`) as HTMLElement | null;
+            if (el && el.isConnected) {
+              el.focus();
+              setCursorToOffset(el, _savedOffset);
+              requestAnimationFrame(() => {
+                if (document.activeElement === el) {
+                  listDemotingRef.current = false;
+                  console.log("[listDemote] restored attempts=" + _att);
+                } else if (_att < 50) {
+                  setTimeout(_tryRestore, 8);
+                } else {
+                  listDemotingRef.current = false;
+                  console.log("[listDemote] give up");
+                }
+              });
+              return;
+            }
+            if (_att < 50) { setTimeout(_tryRestore, 8); }
+            else { listDemotingRef.current = false; console.log("[listDemote] el not found"); }
+          };
+          _tryRestore();
           return;
         }
 
