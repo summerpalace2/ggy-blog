@@ -130,7 +130,7 @@ export function mergeUpward(
   console.log("[mergeUpward] id=" + id + " index=" + index + " content=" + JSON.stringify(content) + " blocksCount=" + blocks.length);
   if (!blocks || blocks.length === 0) { console.log("[mergeUpward] ERROR: blocks is empty!"); return; }
   pushSnapshot();
-  const focusTargetArr: { blockId: string; type: "end" | "offset" | "start"; offset?: number }[] = [];
+  const focusTargetArr: { blockId: string; type: "end" | "offset" | "start" | "html"; offset?: number; html?: string }[] = [];
   flushSync(() => {
     setBlocks((prev) => {
       let realIndex = prev.findIndex((b) => b.id === id);
@@ -185,7 +185,8 @@ export function mergeUpward(
       // [Fix-BS] 使用 React state 而非 DOM 读取，避免陈旧内容
       const prevHtml = previousBlock.html;
       const strippedPrevHtml = !prevHtml.replace(/<[^>]+>/g, "").trim() ? "" : prevHtml;
-      updated[realIndex - 1] = { ...previousBlock, html: strippedPrevHtml + content } as Block;
+      const mergedHtml = strippedPrevHtml + content;
+      updated[realIndex - 1] = { ...previousBlock, html: mergedHtml } as Block;
       updated.splice(realIndex, 1);
       // [Fix-B15] offset 使用 stripped 文本长度，不含 <br>
       focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: strippedPrevHtml.replace(/<[^>]+>/g, "").length };
@@ -194,6 +195,12 @@ export function mergeUpward(
   });
   console.log("[mergeUpward] flushSync done, focusTarget=" + JSON.stringify(focusTargetArr[0]));
   if (!focusTargetArr[0]) { console.log("[mergeUpward] WARNING: focusTarget is empty!"); }
+  // [Fix-ALT] Force DOM sync so useEffect(html) race can't leave DOM stale
+  const htmlT = focusTargetArr[1];
+  if (htmlT && htmlT.html !== undefined) {
+    const tEl = document.querySelector(`[data-block="${htmlT.blockId}"] [contenteditable]`) as HTMLElement;
+    if (tEl && tEl.innerHTML !== htmlT.html) { tEl.innerHTML = htmlT.html; }
+  }
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
