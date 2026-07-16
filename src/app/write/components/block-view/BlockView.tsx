@@ -369,15 +369,13 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 有序/无序/待办列表：空项删除块，有内容直接合并到上一块（一步完成，消除两步竞态）
+        // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
         if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
-          const isListEmpty = !edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
-          if (isListEmpty) {
-            onBackspace("");
-          } else {
-            onBackspace(edEl.innerHTML || "");
-          }
+          // [Change] 列表项BS不再直接合并，而是退为段落
+          // 第二次BS时块已退为段落，走下方默认合并逻辑
+          onChange({ ...block, type: "p" as const, html: edEl.innerHTML });
+          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
           return;
         }
 
