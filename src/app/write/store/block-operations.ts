@@ -203,7 +203,7 @@ export function mergeUpward(
       setTimeout(() => {
         if (ft.type === "start") setCursorToStart(el);
         else if (ft.type === "end") setCursorToEnd(el);
-        else if (ft.type === "offset" && ft.offset !== undefined) setCursorToOffset(el, ft.offset);
+        else if (ft.type === "offset" && ft.offset !== undefined) { setCursorToOffset(el, ft.offset); console.log("[mergeUpward] cursor set to offset " + ft.offset + " in block " + ft.blockId); }
       }, 0);
     }
   }

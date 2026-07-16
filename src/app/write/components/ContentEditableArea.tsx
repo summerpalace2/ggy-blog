@@ -72,6 +72,8 @@ export const ContentEditableArea: FC<Props> = ({
       if (document.activeElement === ref.current) {
         setCursorToOffset(ref.current, offset);
       }
+  } else if (ref.current) {
+    console.log("[syncUp-SKIPPED] html=" + JSON.stringify(newHtml) + " prevHtml=" + JSON.stringify(prevHtml.current) + " domHtml=" + JSON.stringify(ref.current.innerHTML) + " blockId=" + blockId);
     }
   };
 
