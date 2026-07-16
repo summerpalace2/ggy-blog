@@ -172,11 +172,19 @@ export function mergeUpward(
 
       const previousBlock = prev[realIndex - 1];
 
-      // 前一块是特殊块(code/hr/img/table) 无法合并 -> 删当前块，聚焦前块
-      if (["code", "hr", "img", "table"].includes(previousBlock.type)) {
-        updated.splice(realIndex, 1);
-        const fi = Math.max(0, realIndex - 1);
-        focusTargetArr[0] = { blockId: updated[fi]?.id || "", type: "end" };
+      // [Fix] 前一块是特殊块(hr/img/table/code) → 删前一特殊块，当前块补位（而非删当前块）
+      if (["hr", "img", "table", "code"].includes(previousBlock.type)) {
+        updated.splice(realIndex - 1, 1);
+        // 当前块被提前一位
+        const newIdx = realIndex - 1;
+        if (newIdx >= 0 && newIdx < updated.length) {
+          const curAfter = updated[newIdx];
+          // 若当前块有文本内容，拼接到当前块（光标在行首，前面是hr/img已被删）
+          if (content && curAfter.type === "p") {
+            updated[newIdx] = { ...curAfter, html: curAfter.html + content } as Block;
+          }
+          focusTargetArr[0] = { blockId: curAfter.id, type: "start" };
+        }
         return updated;
       }
 
