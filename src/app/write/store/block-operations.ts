@@ -8,8 +8,8 @@
 
 import { flushSync } from "react-dom";
 import type { Block, BType } from "../types";
-import { createBlock, requestCursorRestoration, applyPendingCursorRestoration } from "../utils";
-// requestCursorRestoration imported from utils above
+import { createBlock, requestCursorRestoration, setCursorToOffset, setCursorToStart, setCursorToEnd } from "../utils";
+
 
 /**
  * ??????????
@@ -37,8 +37,8 @@ export function insertAfter(
   });
   // DOM ?????,????
   requestCursorRestoration(newBlock.id, "end");
-  const newEl = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-  if (newEl) newEl.focus();
+  const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+  if (el) el.focus();
 }
 
 /**
@@ -79,8 +79,8 @@ export function splitBlock(
   });
   // DOM ?????,?? onFocus ????
   requestCursorRestoration(newBlock.id, "end");
-  const splitEl = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
-  if (splitEl) splitEl.focus();
+  const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
+  if (el) el.focus();
 }
 
 /**
@@ -112,9 +112,8 @@ export function removeBlock(
   });
   // DOM ?????,????
   if (targetId) {
-    requestCursorRestoration(targetId, "end");
     const el = document.querySelector(`[data-block="${targetId}"] [contenteditable]`) as HTMLElement;
-    if (el) { el.focus(); applyPendingCursorRestoration(targetId, el); }
+    if (el) { el.focus(); setTimeout(() => setCursorToEnd(el), 0); }
   }
 }
 
@@ -197,10 +196,15 @@ export function mergeUpward(
   if (!focusTargetArr[0]) { console.log("[mergeUpward] WARNING: focusTarget is empty!"); }
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
-    requestCursorRestoration(ft.blockId, ft.type, ft.offset);
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
     if (el) {
       el.focus();
+      // [Fix] Direct cursor set with setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        if (ft.type === "start") setCursorToStart(el);
+        else if (ft.type === "end") setCursorToEnd(el);
+        else if (ft.type === "offset" && ft.offset !== undefined) setCursorToOffset(el, ft.offset);
+      }, 0);
     }
   }
 }
@@ -243,9 +247,8 @@ export function mergeDownward(
   });
   // DOM ?????,????
   if (focusBlockId) {
-    requestCursorRestoration(focusBlockId, "start");
     const el = document.querySelector(`[data-block="${focusBlockId}"] [contenteditable]`) as HTMLElement;
-    if (el) { el.focus(); applyPendingCursorRestoration(focusBlockId, el); }
+    if (el) { el.focus(); setTimeout(() => setCursorToStart(el), 0); }
   }
 }
 
