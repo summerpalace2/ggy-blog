@@ -128,6 +128,8 @@ export function mergeUpward(
   blocks: Block[], setBlocks: React.Dispatch<React.SetStateAction<Block[]>>,
   pushSnapshot: () => void,
 ) {
+  console.log("[mergeUpward] id=" + id + " index=" + index + " content=" + JSON.stringify(content) + " blocksCount=" + blocks.length);
+  if (!blocks || blocks.length === 0) { console.log("[mergeUpward] ERROR: blocks is empty!"); return; }
   pushSnapshot();
   const focusTargetArr: { blockId: string; type: "end" | "offset" | "start"; offset?: number }[] = [];
   flushSync(() => {
