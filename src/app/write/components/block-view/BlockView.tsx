@@ -335,8 +335,12 @@ export const BlockView: FC<Props> = ({
         preDivPre.appendChild(preRange.cloneContents());
         const visText = preDivPre.innerHTML.replace(/<[^>]+>/g, "").replace(/\s/g, "").replace(/[​﻿]/g, "");
         atStart = visText.length === 0;
+        console.log("[BS] atStart=" + atStart + " type=" + block.type + " html=" + JSON.stringify(block.html) + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : "null") + " visText=" + JSON.stringify(visText));
       }
 
+      if (!atStart) {
+        console.log("[BS] atStart=FALSE, cursor NOT at start, type=" + block.type + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : "null"));
+      }
       if (atStart) {
         e.preventDefault();
         // 有序覆盖层：先脱ordered
