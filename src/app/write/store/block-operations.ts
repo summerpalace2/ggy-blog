@@ -190,6 +190,7 @@ export function mergeUpward(
       updated.splice(realIndex, 1);
       // [Fix-B15] offset 使用 stripped 文本长度，不含 <br>
       focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: strippedPrevHtml.replace(/<[^>]+>/g, "").length };
+      focusTargetArr[1] = { blockId: previousBlock.id, type: "html", html: mergedHtml };
       return updated;
     });
   });
