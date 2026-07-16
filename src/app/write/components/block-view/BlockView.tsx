@@ -1,4 +1,4 @@
-﻿/**
+/**
  * block-view/BlockView.tsx — 单个块的渲染组件
  * [核心职责] 渲染单个Block，包含左侧操作区、内容区、TypePicker弹窗、链接浮窗、有序列表菜单
  * [Android 类比] ListView 的 ViewHolder，负责单个列表项的渲染和交互
@@ -92,6 +92,16 @@ export const BlockView: FC<Props> = ({
     }
   }, [block.id]);
   // ── 点击链接直接跳转 ──
+
+  // [Fix-B12] justDemoted 标记清除：内容变化时清除（用户输入了文字，不再需要合并）
+  useEffect(() => {
+    if (justDemotedIdRef.current === block.id && justDemotedHtmlRef.current !== null) {
+      if (block.html !== justDemotedHtmlRef.current) {
+        justDemotedIdRef.current = null;
+        justDemotedHtmlRef.current = null;
+      }
+    }
+  }, [block.html, block.id]);
   useEffect(() => {
     const el = edRef.current; if (!el) return;
     const onClick = (e: MouseEvent) => {

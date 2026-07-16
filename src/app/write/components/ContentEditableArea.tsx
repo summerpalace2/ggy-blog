@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ContentEditableArea.tsx — 通用可编辑区域组件
  * [核心职责] 封装 contentEditable div，提供防抖 onChange、图片粘贴/拖拽、链接自动识别、placeholder
  * [Android 类比] 自定义 EditText View，处理所有输入事件
@@ -107,6 +107,12 @@ export const ContentEditableArea: FC<Props> = ({
       }
       pendingHtml.current = null;
     }
+    // [Fix-B1] 保底同步：显式 flush 时确保 DOM→React state 同步
+    if (ref.current && prevHtml.current !== ref.current.innerHTML) {
+      isInternalUpdate.current = true;
+      prevHtml.current = ref.current.innerHTML;
+      onChangeRef.current(ref.current.innerHTML);
+    }
   };
 
   /** 立即提交防抖内容并返回最新DOM值（供键盘事件使用） */
@@ -121,6 +127,12 @@ export const ContentEditableArea: FC<Props> = ({
         onChangeRef.current(pending);
       }
       pendingHtml.current = null;
+    }
+    // [Fix-B1] 保底同步：显式 flush 时确保 DOM→React state 同步
+    if (ref.current && prevHtml.current !== ref.current.innerHTML) {
+      isInternalUpdate.current = true;
+      prevHtml.current = ref.current.innerHTML;
+      onChangeRef.current(ref.current.innerHTML);
     }
     return ref.current?.innerHTML || "";
   };

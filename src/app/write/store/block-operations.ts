@@ -62,7 +62,7 @@ export function splitBlock(
   const newBlock = createBlock(newType, afterHtml);
   if (newType === "ol") newBlock.restartNumbering = false;
   if (keepOrdered) newBlock.ordered = true;
-  // pushSnapshot() removed here - onChange caller already pushed one snapshot
+  pushSnapshot(); // [Fix-B8] restore: snapshot before split for undo history
   // [Fix flushSync] ??????
   flushSync(() => {
     setBlocks((prev) => {
@@ -144,7 +144,14 @@ export function mergeUpward(
 
       // [修复] 当前块内容为空 -> 删块；聚焦前一有内容块，若无则找后一块
       if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
-        if (prev.length <= 1) return prev;
+        // [Fix-B16] 唯一空列表块退为段落
+        if (prev.length <= 1) {
+          if (["ol", "ul", "todo"].includes(currentBlock.type)) {
+            updated[0] = { ...currentBlock, type: "p" } as Block;
+            return updated;
+          }
+          return prev;
+        }
         updated.splice(realIndex, 1);
         let fi = realIndex - 1;
         while (fi >= 0 && !updated[fi]?.html.replace(/<[^>]+>/g, "").trim()) fi--;
@@ -173,11 +180,14 @@ export function mergeUpward(
       }
 
       // 正常合并: 把 content 拼接到前一块（即使前一块当前为空也合并，把内容移过去）
-      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement;
-      const prevHtml = prevEl?.innerHTML || previousBlock.html;
+      // [Fix-B2] 空块合并：前一块为空时 strip <br> 残影，直接替换内容
+      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement | null;
+      const rawPrevHtml = prevEl?.innerHTML || previousBlock.html;
+      const prevHtml = !rawPrevHtml.replace(/<[^>]+>/g, "").trim() ? "" : rawPrevHtml;
       updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content } as Block;
       updated.splice(realIndex, 1);
-      focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: prevEl?.innerText?.length || 0 };
+      // [Fix-B15] offset 使用 stripped 文本长度，不含 <br>
+      focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: prevHtml.replace(/<[^>]+>/g, "").length };
       return updated;
     });
   });
@@ -202,6 +212,7 @@ export function mergeDownward(
 ) {
   pushSnapshot();
   let focusBlockId: string | undefined;
+  let focusOffset = 0; // [Fix-B9]
   // [Fix flushSync] ??????
   flushSync(() => {
     setBlocks((prev) => {
@@ -217,11 +228,13 @@ export function mergeDownward(
       const nextHtml = nextEl?.innerHTML || nextBlock.html;
       const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
       const currentHtml = currentEl?.innerHTML || currentBlock.html;
+      const currentTextLen = currentHtml.replace(/<[^>]+>/g, "").length; // [Fix-B9]
       if (nextHtml) {
         updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
       }
       updated.splice(realIndex, 1);
       focusBlockId = nextBlock.id;
+      focusOffset = currentTextLen; // [Fix-B9] 光标偏移=原当前块文本长度
       return updated;
     });
   });
