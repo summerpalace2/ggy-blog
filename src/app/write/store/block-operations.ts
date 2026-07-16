@@ -197,7 +197,6 @@ export function mergeUpward(
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
     if (el) {
       el.focus();
-      applyPendingCursorRestoration(ft.blockId, el);
     }
   }
 }

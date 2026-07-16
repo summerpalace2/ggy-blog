@@ -85,7 +85,7 @@ export const ContentEditableArea: FC<Props> = ({
     debounceTimer.current = setTimeout(() => {
       debounceTimer.current = null;
       const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
+      if (pending !== null && ref.current) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
         onChangeRef.current(pending);
@@ -100,7 +100,7 @@ export const ContentEditableArea: FC<Props> = ({
       clearTimeout(debounceTimer.current);
       debounceTimer.current = null;
       const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
+      if (pending !== null && ref.current) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
         onChangeRef.current(pending);
@@ -121,7 +121,7 @@ export const ContentEditableArea: FC<Props> = ({
       clearTimeout(debounceTimer.current);
       debounceTimer.current = null;
       const pending = pendingHtml.current;
-      if (pending !== null && ref.current && ref.current.innerHTML === pending) {
+      if (pending !== null && ref.current) {
         isInternalUpdate.current = true;
         prevHtml.current = pending;
         onChangeRef.current(pending);

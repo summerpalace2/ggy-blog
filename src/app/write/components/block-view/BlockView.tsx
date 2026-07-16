@@ -66,9 +66,6 @@ export const BlockView: FC<Props> = ({
   const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // 降级跟踪：标题/列表→段落后，下次 Backspace 合并到上一块
-  const justDemotedIdRef = useRef<string | null>(null);
-  const justDemotedHtmlRef = useRef<string | null>(null);
   // 图片缩放相关
   const imgRef = useRef<HTMLImageElement>(null);
   const imgDragRef = useRef<{ startX: number; startW: number; imgLeft: number; imgWidth: number } | null>(null);
@@ -93,16 +90,6 @@ export const BlockView: FC<Props> = ({
     }
   }, [block.id]);
   // ── 点击链接直接跳转 ──
-
-  // [Fix-B12] justDemoted 标记清除：内容变化时清除（用户输入了文字，不再需要合并）
-  useEffect(() => {
-    if (justDemotedIdRef.current === block.id && justDemotedHtmlRef.current !== null) {
-      if (block.html !== justDemotedHtmlRef.current) {
-        justDemotedIdRef.current = null;
-        justDemotedHtmlRef.current = null;
-      }
-    }
-  }, [block.html, block.id]);
   useEffect(() => {
     const el = edRef.current; if (!el) return;
     const onClick = (e: MouseEvent) => {
@@ -190,11 +177,6 @@ export const BlockView: FC<Props> = ({
   // ── 键盘事件处理（核心交互逻辑）──
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // [Fix] 非 Backspace 按键清除降级标记（用后即焚，消除 useEffect 竞态）
-    if (e.key !== "Backspace" && justDemotedIdRef.current) {
-      justDemotedIdRef.current = null;
-      justDemotedHtmlRef.current = null;
-    }
-
     // Ctrl+B/I/U 快捷键
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
       if (e.key.toLowerCase() === "b") { e.preventDefault(); document.execCommand("bold", false); return; }
@@ -373,13 +355,7 @@ export const BlockView: FC<Props> = ({
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
             onBackspace(edEl.innerText || "");
           } else {
-            onChange({ ...block, type: "p" });
-            justDemotedIdRef.current = block.id;
-            justDemotedHtmlRef.current = block.html;
-            // [Fix] onFocus restores cursor (focus async resets to pos 0)
-            requestCursorRestoration(block.id, "start");
-            const el = edRef.current;
-            if (el) el.focus();
+            onBackspace(edEl.innerHTML || "");
           }
           return;
         }
@@ -389,36 +365,19 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // ??/??/?????????????????????????
+        // 有序/无序/待办列表：空项删除块，有内容直接合并到上一块（一步完成，消除两步竞态）
         if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
           const isListEmpty = !edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
           if (isListEmpty) {
-            // ??????????????????
             onBackspace("");
           } else {
-            // ???????????????????
-            onChange({ ...block, type: "p", html: edEl.innerHTML });
-            justDemotedIdRef.current = block.id;
-            justDemotedHtmlRef.current = edEl.innerHTML;
-            // ? RAF ??????? type ??? DOM ?????????
-            // [Fix] onFocus restores cursor (focus async resets to pos 0)
-            requestCursorRestoration(block.id, "start");
-            const el = edRef.current;
-            if (el) el.focus();
+            onBackspace(edEl.innerHTML || "");
           }
           return;
         }
 
-        // 降级为段落后的块：id 匹配时合并到上一块
-        if (justDemotedIdRef.current === block.id) {
-          justDemotedIdRef.current = null;
-          justDemotedHtmlRef.current = null;
-          flushRef.current?.();
-          const _v1 = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
-          onBackspace(_v1 ? edEl.innerHTML : "");
-          return;
-        }
+
         // 默认：合并到上一块（段落直接合并，无需两步）；可见内容为空则走删除路径
         flushRef.current?.();
         const _v0 = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
