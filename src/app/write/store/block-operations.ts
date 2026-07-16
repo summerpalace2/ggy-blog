@@ -196,11 +196,16 @@ export function mergeUpward(
   console.log("[mergeUpward] flushSync done, focusTarget=" + JSON.stringify(focusTargetArr[0]));
   if (!focusTargetArr[0]) { console.log("[mergeUpward] WARNING: focusTarget is empty!"); }
   // [Fix-ALT] Force DOM sync so useEffect(html) race can't leave DOM stale
+  console.log('[postFlush] focusTargetArr.length=' + focusTargetArr.length + ' arr0=' + JSON.stringify(focusTargetArr[0]) + ' arr1=' + JSON.stringify(focusTargetArr[1]));
   const htmlT = focusTargetArr[1];
   if (htmlT && htmlT.html !== undefined) {
     const tEl = document.querySelector(`[data-block="${htmlT.blockId}"] [contenteditable]`) as HTMLElement;
-    if (tEl && tEl.innerHTML !== htmlT.html) { tEl.innerHTML = htmlT.html; }
-  }
+    if (tEl) {
+      console.log('[forceDOM] blockId=' + htmlT.blockId + ' oldInner=' + JSON.stringify(tEl.innerHTML) + ' newInner=' + JSON.stringify(htmlT.html));
+      if (tEl.innerHTML !== htmlT.html) { tEl.innerHTML = htmlT.html; console.log('[forceDOM] UPDATED'); }
+      else console.log('[forceDOM] SKIP (already same)');
+    } else { console.log('[forceDOM] ELEMENT NOT FOUND for ' + htmlT.blockId); }
+  } else { console.log('[forceDOM] no htmlT'); }
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
     const el = document.querySelector(`[data-block="${ft.blockId}"] [contenteditable]`) as HTMLElement;
