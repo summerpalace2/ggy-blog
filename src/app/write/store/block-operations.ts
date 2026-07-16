@@ -193,6 +193,8 @@ export function mergeUpward(
       return updated;
     });
   });
+  console.log("[mergeUpward] flushSync done, focusTarget=" + JSON.stringify(focusTargetArr[0]));
+  if (!focusTargetArr[0]) { console.log("[mergeUpward] WARNING: focusTarget is empty!"); }
   const ft = focusTargetArr[0];
   if (ft && ft.blockId) {
     requestCursorRestoration(ft.blockId, ft.type, ft.offset);
