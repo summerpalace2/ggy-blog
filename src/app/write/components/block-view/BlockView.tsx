@@ -14,7 +14,7 @@ import {
 import { TypePicker } from "../TypePicker";
 import {
   highlightCode, readFileAsDataUrl, imageBlockHtml, escapeHtml,
-  setCursorToEnd, setCursorToStart,
+  setCursorToEnd, setCursorToOffset, setCursorToStart,
 } from "../../utils";
 import { requestCursorRestoration } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
@@ -372,10 +372,25 @@ export const BlockView: FC<Props> = ({
         // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
         if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
-          // [Change] 列表项BS不再直接合并，而是退为段落
-          // 第二次BS时块已退为段落，走下方默认合并逻辑
+          // [Fix] ol→p 渲染树剧变导致DOM销毁重建，edRef会过期
+          // 必须捕获当前光标位置 + 用blockId在新DOM中查找元素
+          const _blkId = block.id;
+          const _savedOffset = (() => {
+            const sel = window.getSelection();
+            if (sel && sel.rangeCount > 0 && edEl) {
+              const r = sel.getRangeAt(0);
+              const pr = document.createRange();
+              pr.selectNodeContents(edEl);
+              pr.setEnd(r.startContainer, r.startOffset);
+              return pr.toString().length;
+            }
+            return 0;
+          })();
           onChange({ ...block, type: "p" as const, html: edEl.innerHTML });
-          setTimeout(() => { const el = edRef.current; if (el) setCursorToStart(el); }, 0);
+          requestAnimationFrame(() => {
+            const newEl = document.querySelector(`[data-block="${_blkId}"] [contenteditable]`) as HTMLElement | null;
+            if (newEl) { newEl.focus(); setCursorToOffset(newEl, _savedOffset); }
+          });
           return;
         }
 
