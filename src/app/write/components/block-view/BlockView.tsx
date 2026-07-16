@@ -372,7 +372,9 @@ export const BlockView: FC<Props> = ({
 
                 // 有序/无序/待办列表：第一次BS退为段落，第二次BS合并到上一块
                 // [Fix] 降级进行中，吞掉BS等恢复完再处理
-        if (listDemotingRef.current) { e.preventDefault(); return; }
+        // [Diag] 确认listHandler是否到达
+        console.log("[listBS] reached, type=" + block.type + " demoting=" + listDemotingRef.current + " html=" + JSON.stringify(edEl ? edEl.innerHTML : "NULL"));
+        if (listDemotingRef.current) { e.preventDefault(); console.log("[listBS] swallowed by lock"); return; }
 if (["ol", "ul", "todo"].includes(block.type)) {
           flushRef.current?.();
           const _blkId = block.id;
