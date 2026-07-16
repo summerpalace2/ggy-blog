@@ -343,6 +343,7 @@ export const BlockView: FC<Props> = ({
       }
       if (atStart) {
         e.preventDefault();
+        console.log("[BS] PATH: type=" + block.type + " ordered=" + !!block.ordered + " html=" + JSON.stringify(block.html) + " domHtml=" + JSON.stringify(edEl ? edEl.innerHTML : null));
         // 有序覆盖层：先脱ordered
         if (block.ordered && block.html.replace(/<[^>]+>/g, "").trim()) {
           onChange({ ...block, ordered: undefined, restartNumbering: undefined });
