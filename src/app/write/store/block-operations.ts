@@ -213,10 +213,17 @@ export function mergeUpward(
     if (el) {
       el.focus();
       // [Fix] Direct cursor set with setTimeout to ensure DOM is ready
+      // [Diag] Cancel stale cursor-set timer to avoid apply after DOM changed
+      const _cursorEl = el;
+      const _cursorFt = ft;
+      const _cursorBlockId = ft.blockId;
+      console.log("[cursorSet] scheduled, connected=" + _cursorEl.isConnected + " text=" + JSON.stringify(_cursorEl.innerText) + " offset=" + (ft.offset !== undefined ? ft.offset : ft.type) + " blockId=" + _cursorBlockId);
       setTimeout(() => {
-        if (ft.type === "start") setCursorToStart(el);
-        else if (ft.type === "end") setCursorToEnd(el);
-        else if (ft.type === "offset" && ft.offset !== undefined) { setCursorToOffset(el, ft.offset); console.log("[mergeUpward] cursor set to offset " + ft.offset + " in block " + ft.blockId); }
+        if (!_cursorEl.isConnected) { console.log("[cursorSet] ABORT el removed from DOM"); return; }
+        console.log("[cursorSet] executing, text=" + JSON.stringify(_cursorEl.innerText) + " active=" + (document.activeElement === _cursorEl));
+        if (ft.type === "start") setCursorToStart(_cursorEl);
+        else if (ft.type === "end") setCursorToEnd(_cursorEl);
+        else if (ft.type === "offset" && ft.offset !== undefined) { setCursorToOffset(_cursorEl, ft.offset); console.log("[cursorSet] done offset=" + ft.offset); }
       }, 0);
     }
   }

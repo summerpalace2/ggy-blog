@@ -204,6 +204,16 @@ export const ContentEditableArea: FC<Props> = ({
     isInternalUpdate.current = true;
     if (blockId && ref.current) {
       const applied = applyPendingCursorRestoration(blockId, ref.current);
+      if (ref.current) {
+        const _sel2 = window.getSelection();
+        if (_sel2 && _sel2.rangeCount > 0) {
+          const _r2 = _sel2.getRangeAt(0);
+          const _pre2 = document.createRange();
+          _pre2.selectNodeContents(ref.current);
+          _pre2.setEnd(_r2.startContainer, _r2.startOffset);
+          console.log("[onFocus] cursor offset after restore=" + _pre2.toString().length + " text=" + JSON.stringify(ref.current.innerText));
+        }
+      }
       console.log("[onFocus] cursorRestoration applied=" + applied);
     }
     onFocus?.();
