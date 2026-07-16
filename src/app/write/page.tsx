@@ -111,6 +111,7 @@ export default function WritePage() {
   }, [blocks, setBlocks, pushSnapshot]);
 
   const handleMergeUpward = useCallback((id: string, index: number, content: string) => {
+    console.log("[page] handleMergeUpward id=" + id + " index=" + index + " content=" + JSON.stringify(content));
     mergeUpward(id, index, content, blocks, setBlocks, pushSnapshot);
   }, [blocks, setBlocks, pushSnapshot]);
 
