@@ -77,6 +77,7 @@ export const BlockView: FC<Props> = ({
   const isComposing = useRef(false);
   const processingEnter = useRef(false);
 
+  const backspaceProcessing = useRef(false);
   const isEmpty = !block.html.trim();
   const isHeading = ["h1", "h2", "h3", "h4", "h5"].includes(block.type);
   const currentTypeMeta = BLOCK_TYPES.find((t) => t.type === block.type) || BLOCK_TYPES[0];
@@ -352,8 +353,11 @@ export const BlockView: FC<Props> = ({
       }
 
       if (atStart) {
+        // [Fix-BS] 防止快速连续 BS 竞态
+        if (backspaceProcessing.current) { e.preventDefault(); return; }
+        backspaceProcessing.current = true;
         e.preventDefault();
-
+        try {
         // 有序覆盖层：先脱ordered
         if (block.ordered && block.html.replace(/<[^>]+>/g, "").trim()) {
           onChange({ ...block, ordered: undefined, restartNumbering: undefined });
@@ -420,6 +424,10 @@ export const BlockView: FC<Props> = ({
         const _v0 = edEl.innerHTML.replace(/<[^>]+>/g, "").trim();
         onBackspace(_v0 ? edEl.innerHTML : "");
         return;
+        } finally {
+          // [Fix-BS] 一帧后释放锁，确保 DOM 已稳定
+          setTimeout(() => { backspaceProcessing.current = false; }, 16);
+        }
       }
     }
 

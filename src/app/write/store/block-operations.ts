@@ -181,13 +181,13 @@ export function mergeUpward(
 
       // 正常合并: 把 content 拼接到前一块（即使前一块当前为空也合并，把内容移过去）
       // [Fix-B2] 空块合并：前一块为空时 strip <br> 残影，直接替换内容
-      const prevEl = document.querySelector(`[data-block="${previousBlock.id}"] [contenteditable]`) as HTMLElement | null;
-      const rawPrevHtml = prevEl?.innerHTML || previousBlock.html;
-      const prevHtml = !rawPrevHtml.replace(/<[^>]+>/g, "").trim() ? "" : rawPrevHtml;
-      updated[realIndex - 1] = { ...previousBlock, html: prevHtml + content } as Block;
+      // [Fix-BS] 使用 React state 而非 DOM 读取，避免陈旧内容
+      const prevHtml = previousBlock.html;
+      const strippedPrevHtml = !prevHtml.replace(/<[^>]+>/g, "").trim() ? "" : prevHtml;
+      updated[realIndex - 1] = { ...previousBlock, html: strippedPrevHtml + content } as Block;
       updated.splice(realIndex, 1);
       // [Fix-B15] offset 使用 stripped 文本长度，不含 <br>
-      focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: prevHtml.replace(/<[^>]+>/g, "").length };
+      focusTargetArr[0] = { blockId: previousBlock.id, type: "offset", offset: strippedPrevHtml.replace(/<[^>]+>/g, "").length };
       return updated;
     });
   });
@@ -224,14 +224,14 @@ export function mergeDownward(
       const updated = [...prev];
 
       // ??????????+?????????????????
-      const nextEl = document.querySelector(`[data-block="${nextBlock.id}"] [contenteditable]`) as HTMLElement;
-      const nextHtml = nextEl?.innerHTML || nextBlock.html;
-      const currentEl = document.querySelector(`[data-block="${currentBlock.id}"] [contenteditable]`) as HTMLElement;
-      const currentHtml = currentEl?.innerHTML || currentBlock.html;
+      // [Fix-BS] 使用 React state 而非 DOM 读取
+      const nextHtml = nextBlock.html;
+      const currentHtml = currentBlock.html;
       const currentTextLen = currentHtml.replace(/<[^>]+>/g, "").length; // [Fix-B9]
-      if (nextHtml) {
-        updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
-      }
+
+
+      updated[realIndex + 1] = { ...nextBlock, html: currentHtml + nextHtml };
+
       updated.splice(realIndex, 1);
       focusBlockId = nextBlock.id;
       focusOffset = currentTextLen; // [Fix-B9] 光标偏移=原当前块文本长度
