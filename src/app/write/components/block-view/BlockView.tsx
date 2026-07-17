@@ -609,7 +609,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 px-4 py-3 outline-none italic"
-          style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em" }}
+          style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
           placeholder="引用内容…" spellCheck={false} />
       </div>
     );
@@ -663,7 +663,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="w-full py-0.5 outline-none"
-            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em" }}
+            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
             placeholder="1. 第一项" spellCheck={false} />
         </div>
       );
@@ -678,7 +678,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="w-full py-0.5 outline-none"
-          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em" }}
+          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
           placeholder="- 列表项" spellCheck={false} />
       </div>
     );
@@ -697,7 +697,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
-            style={{ color: block.checked ? "var(--text-muted)" : "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em", textDecoration: block.checked ? "line-through" : "none" }}
+            style={{ color: block.checked ? "var(--text-muted)" : "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", textDecoration: block.checked ? "line-through" : "none" }}
             placeholder="待办事项…" spellCheck={false} />
         </div>
       );
@@ -718,7 +718,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
-            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em" }}
+            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
             placeholder="提示内容…" spellCheck={false} />
         </div>
       );
@@ -789,7 +789,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="w-full outline-none"
-              style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em" }}
+              style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
               placeholder="折叠标题…" spellCheck={false} />
             <div className="overflow-hidden" style={{ maxHeight: block.collapsed ? 0 : 2000, opacity: block.collapsed ? 0 : 1, transition: "max-height 0.3s ease, opacity 0.3s ease" }}>
               <div className="ml-4 mt-1 pl-4 border-l-2" style={{ borderColor: "var(--border-light)" }}>
@@ -797,7 +797,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                   onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
                   onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
                   className="w-full outline-none"
-                  style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "0.9rem", lineHeight: 1.6, minHeight: "1em" }}
+                  style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "0.9rem", lineHeight: 1.2, minHeight: "1em" }}
                   placeholder="折叠内容…" spellCheck={false} />
               </div>
             </div>
@@ -828,7 +828,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="flex-1 outline-none font-mono text-sm"
-              style={{ color: "var(--text)", caretColor: "var(--accent)", lineHeight: 1.6, minHeight: "1em" }}
+              style={{ color: "var(--text)", caretColor: "var(--accent)", lineHeight: 1.2, minHeight: "1em" }}
               placeholder="输入 LaTeX 公式，如: E = mc^2" spellCheck={false} />
             <button onClick={() => onChange({ ...block, formulaDisplay: !displayMode })}
               className="shrink-0 px-1.5 py-0.5 rounded font-mono text-[10px] hover:bg-[var(--bg-subtle)] cursor-pointer"
@@ -908,7 +908,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
                 onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
                 className="flex-1 min-w-0 outline-none"
-                style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em", ...headingStyle }}
+                style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
                 placeholder={placeholderText} spellCheck={false} />
               {block.sideImage && (
                 <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
@@ -957,7 +957,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 min-w-0 outline-none"
-          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.6, minHeight: "1em", ...headingStyle }}
+          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
           placeholder={placeholderText} spellCheck={false} />
         {block.sideImage && (
           <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
