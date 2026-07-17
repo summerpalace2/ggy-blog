@@ -9,6 +9,9 @@ import { syntaxHighlighting, defaultHighlightStyle, indentOnInput, bracketMatchi
 import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { javascript } from "@codemirror/lang-javascript";
+import { HighlightStyle } from "@codemirror/language";
+import { tags as t } from "@lezer/highlight";
+import type { TagStyle } from "@codemirror/language";
 import { python } from "@codemirror/lang-python";
 import { css } from "@codemirror/lang-css";
 import { html } from "@codemirror/lang-html";
@@ -67,6 +70,94 @@ const THEME_DEFS: Record<string, { bg: string; header: string; border: string; t
   solarized:{ bg: "#fdf6e3", header: "#eee8d5", border: "#93a1a1", text: "#657b83", textMuted: "#93a1a1", codeText: "#586e75" },
 };
 
+
+// 各主题的语法高亮配色
+const THEME_HIGHLIGHTS: Record<string, TagStyle[]> = {
+  default: [
+    { tag: t.keyword, color: "#569cd6" },
+    { tag: [t.string, t.special(t.string)], color: "#ce9178" },
+    { tag: t.comment, color: "#6a9955" },
+    { tag: t.number, color: "#b5cea8" },
+    { tag: t.variableName, color: "#9cdcfe" },
+    { tag: t.function(t.variableName), color: "#dcdcaa" },
+    { tag: t.typeName, color: "#4ec9b0" },
+    { tag: t.propertyName, color: "#9cdcfe" },
+    { tag: t.operator, color: "#d4d4d4" },
+    { tag: t.punctuation, color: "#d4d4d4" },
+  ],
+  dark: [
+    { tag: t.keyword, color: "#c0caf5" },
+    { tag: [t.string, t.special(t.string)], color: "#9ece6a" },
+    { tag: t.comment, color: "#565f89" },
+    { tag: t.number, color: "#ff9e64" },
+    { tag: t.variableName, color: "#c0caf5" },
+    { tag: t.function(t.variableName), color: "#7aa2f7" },
+    { tag: t.typeName, color: "#2ac3de" },
+    { tag: t.propertyName, color: "#7dcfff" },
+    { tag: t.operator, color: "#89ddff" },
+    { tag: t.punctuation, color: "#a9b1d6" },
+  ],
+  monokai: [
+    { tag: t.keyword, color: "#f92672" },
+    { tag: [t.string, t.special(t.string)], color: "#e6db74" },
+    { tag: t.comment, color: "#a6a28c" },
+    { tag: t.number, color: "#ae81ff" },
+    { tag: t.variableName, color: "#f8f8f2" },
+    { tag: t.function(t.variableName), color: "#a6e22e" },
+    { tag: t.typeName, color: "#66d9ef" },
+    { tag: t.propertyName, color: "#f8f8f2" },
+    { tag: t.operator, color: "#f92672" },
+    { tag: t.punctuation, color: "#f8f8f2" },
+  ],
+  dracula: [
+    { tag: t.keyword, color: "#ff79c6" },
+    { tag: [t.string, t.special(t.string)], color: "#f1fa8c" },
+    { tag: t.comment, color: "#6272a4" },
+    { tag: t.number, color: "#bd93f9" },
+    { tag: t.variableName, color: "#f8f8f2" },
+    { tag: t.function(t.variableName), color: "#50fa7b" },
+    { tag: t.typeName, color: "#8be9fd" },
+    { tag: t.propertyName, color: "#f8f8f2" },
+    { tag: t.operator, color: "#ff79c6" },
+    { tag: t.punctuation, color: "#f8f8f2" },
+  ],
+  github: [
+    { tag: t.keyword, color: "#cf222e" },
+    { tag: [t.string, t.special(t.string)], color: "#0a3069" },
+    { tag: t.comment, color: "#6e7781" },
+    { tag: t.number, color: "#0550ae" },
+    { tag: t.variableName, color: "#953800" },
+    { tag: t.function(t.variableName), color: "#8250df" },
+    { tag: t.typeName, color: "#953800" },
+    { tag: t.propertyName, color: "#0550ae" },
+    { tag: t.operator, color: "#cf222e" },
+    { tag: t.punctuation, color: "#24292f" },
+  ],
+  nord: [
+    { tag: t.keyword, color: "#81a1c1" },
+    { tag: [t.string, t.special(t.string)], color: "#a3be8c" },
+    { tag: t.comment, color: "#616e88" },
+    { tag: t.number, color: "#b48ead" },
+    { tag: t.variableName, color: "#d8dee9" },
+    { tag: t.function(t.variableName), color: "#88c0d0" },
+    { tag: t.typeName, color: "#8fbcbb" },
+    { tag: t.propertyName, color: "#d8dee9" },
+    { tag: t.operator, color: "#81a1c1" },
+    { tag: t.punctuation, color: "#eceff4" },
+  ],
+  solarized: [
+    { tag: t.keyword, color: "#859900" },
+    { tag: [t.string, t.special(t.string)], color: "#2aa198" },
+    { tag: t.comment, color: "#93a1a1" },
+    { tag: t.number, color: "#d33682" },
+    { tag: t.variableName, color: "#268bd2" },
+    { tag: t.function(t.variableName), color: "#b58900" },
+    { tag: t.typeName, color: "#268bd2" },
+    { tag: t.propertyName, color: "#268bd2" },
+    { tag: t.operator, color: "#859900" },
+    { tag: t.punctuation, color: "#657b83" },
+  ],
+};
 interface CodeMirrorBlockProps {
   value: string;
   lang?: string;
@@ -139,7 +230,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         autocompletion(),
         highlightActiveLine(),
         highlightSelectionMatches(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        syntaxHighlighting(HighlightStyle.define(THEME_HIGHLIGHTS[theme] || THEME_HIGHLIGHTS.default)),
         getLangExt(),
         updateListener,
         backspaceKeymap,
