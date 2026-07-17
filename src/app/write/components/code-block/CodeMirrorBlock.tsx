@@ -315,6 +315,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         onBlur={onBlur}
         style={{ backgroundColor: themeDef.bg }}
       />
+      <Resizer wrapperRef={wrapperRef} lineHeightPx={lineHeightPx} />
     </div>
   );
 }
