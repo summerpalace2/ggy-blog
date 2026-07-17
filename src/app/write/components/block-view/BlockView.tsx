@@ -109,6 +109,7 @@ export const BlockView: FC<Props> = ({
   }, [olMenu]);
   const plusRef = useRef<HTMLButtonElement>(null);
   const typeRef = useRef<HTMLButtonElement>(null);
+  const [gutterHovered, setGutterHovered] = useState(false);
     const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1044,6 +1045,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
       <div className="flex items-start" style={{ minHeight: block.type === "hr" ? 16 : block.type === "code" ? 0 : 24 }}>
         {/* 左侧操作区 */}
         <div className="w-14 shrink-0 pt-0.5 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg relative"
+          onMouseEnter={() => setGutterHovered(true)} onMouseLeave={() => setGutterHovered(false)}
           >
           {isEmpty ? (
             <button ref={plusRef} onMouseDown={(e) => { e.preventDefault(); openInsertPicker(); }}
@@ -1068,7 +1070,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
         {/* 内容区 */}
         <div className="flex-1 min-w-0 rounded-r-lg"
-          style={{ paddingLeft: 4 }}>
+          style={{ paddingLeft: 4, backgroundColor: gutterHovered ? "color-mix(in srgb, var(--accent) 6%, transparent)" : "transparent", transition: "background-color 0.15s ease" }}>
           {renderBlockContent()}
         </div>
       </div>
