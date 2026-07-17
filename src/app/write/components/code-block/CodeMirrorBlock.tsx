@@ -23,7 +23,6 @@ import { php } from "@codemirror/lang-php";
 import { sass } from "@codemirror/lang-sass";
 import { vue } from "@codemirror/lang-vue";
 import { angular } from "@codemirror/lang-angular";
-import { oneDark } from "@codemirror/theme-one-dark";
 
 // 语言映射
 const LANG_EXTENSIONS: Record<string, () => ReturnType<typeof javascript>> = {
@@ -52,25 +51,20 @@ const LANG_EXTENSIONS: Record<string, () => ReturnType<typeof javascript>> = {
   go: () => cpp(), // fallback
   ruby: () => python(), // fallback
   swift: () => java(), // fallback
-  bash: () => shell(),
-  shell: () => shell(),
+  bash: () => javascript(),
+  shell: () => javascript(),
 };
 
 // 主题定义
-const THEME_DEFS: Record<string, { bg: string; header: string; border: string; text: string; textMuted: string }> = {
-  default:  { bg: "#1e1e1e", header: "#2d2d2d", border: "#333", text: "#ccc", textMuted: "#888" },
-  dark:     { bg: "#0d1117", header: "#161b22", border: "#30363d", text: "#c9d1d9", textMuted: "#8b949e" },
-  monokai:  { bg: "#272822", header: "#3e3d32", border: "#49483e", text: "#f8f8f2", textMuted: "#a6a28c" },
-  dracula:  { bg: "#282a36", header: "#44475a", border: "#6272a4", text: "#f8f8f2", textMuted: "#6272a4" },
-  github:   { bg: "#f6f8fa", header: "#eaeef2", border: "#d0d7de", text: "#1f2328", textMuted: "#656d76" },
-  nord:     { bg: "#2e3440", header: "#3b4252", border: "#4c566a", text: "#eceff4", textMuted: "#81a1c1" },
-  solarized:{ bg: "#fdf6e3", header: "#eee8d5", border: "#93a1a1", text: "#657b83", textMuted: "#93a1a1" },
+const THEME_DEFS: Record<string, { bg: string; header: string; border: string; text: string; textMuted: string; codeText: string }> = {
+  default:  { bg: "rgba(245,245,247,1)", header: "rgba(238,238,240,1)", border: "#d1d5da", text: "#24292f", textMuted: "#6e7781", codeText: "#1f2328" },
+  dark:     { bg: "#0d1117", header: "#161b22", border: "#30363d", text: "#c9d1d9", textMuted: "#8b949e", codeText: "#e6edf3" },
+  monokai:  { bg: "#272822", header: "#3e3d32", border: "#49483e", text: "#f8f8f2", textMuted: "#a6a28c", codeText: "#f8f8f2" },
+  dracula:  { bg: "#282a36", header: "#44475a", border: "#6272a4", text: "#f8f8f2", textMuted: "#6272a4", codeText: "#f8f8f2" },
+  github:   { bg: "#f6f8fa", header: "#eaeef2", border: "#d0d7de", text: "#1f2328", textMuted: "#656d76", codeText: "#1f2328" },
+  nord:     { bg: "#2e3440", header: "#3b4252", border: "#4c566a", text: "#eceff4", textMuted: "#81a1c1", codeText: "#d8dee9" },
+  solarized:{ bg: "#fdf6e3", header: "#eee8d5", border: "#93a1a1", text: "#657b83", textMuted: "#93a1a1", codeText: "#586e75" },
 };
-
-function shell() {
-  // Simple shell language support
-  return javascript();
-}
 
 interface CodeMirrorBlockProps {
   value: string;
@@ -98,16 +92,16 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
     return fn ? fn() : javascript();
   }, [lang]);
 
-  // 获取主题
-  const getTheme = useCallback(() => {
-    return oneDark;
-  }, []);
+  // 获取主题颜色
+  const getThemeDef = useCallback(() => {
+    return THEME_DEFS[theme] || THEME_DEFS.default;
+  }, [theme]);
 
   // 初始化编辑器
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const themeDef = THEME_DEFS[theme] || THEME_DEFS.default;
+    const themeDef = getThemeDef();
 
     const updateListener = EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -144,22 +138,20 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         highlightSelectionMatches(),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         getLangExt(),
-        getTheme(),
         updateListener,
         backspaceKeymap,
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
         EditorView.theme({
-          "&": { backgroundColor: themeDef.bg, color: themeDef.text },
-          ".cm-content": { caretColor: themeDef.text, fontFamily: "var(--font-mono, monospace)", fontSize: "0.875rem", lineHeight: "1.65", padding: "12px 0" },
-          ".cm-cursor": { borderLeftColor: themeDef.text },
-          ".cm-activeLine": { backgroundColor: "rgba(128,128,128,0.1)" },
-          ".cm-gutters": { backgroundColor: themeDef.bg, color: themeDef.textMuted, border: "none" },
-          ".cm-activeLineGutter": { backgroundColor: "rgba(128,128,128,0.1)" },
+          "&": { backgroundColor: themeDef.bg, color: themeDef.codeText, height: "100%" },
+          ".cm-content": { caretColor: themeDef.codeText, fontFamily: "var(--font-mono, monospace)", fontSize: "0.9375rem", lineHeight: "1.65", padding: "12px 0" },
+          ".cm-cursor": { borderLeftColor: themeDef.codeText },
+          ".cm-activeLine": { backgroundColor: "rgba(128,128,128,0.08)" },
+          ".cm-gutters": { backgroundColor: themeDef.header, color: themeDef.textMuted, border: "none" },
+          ".cm-activeLineGutter": { backgroundColor: "rgba(128,128,128,0.08)" },
           ".cm-selectionBackground": { backgroundColor: "rgba(128,128,128,0.2)" },
           "&.cm-focused .cm-selectionBackground": { backgroundColor: "rgba(128,128,128,0.3)" },
           ".cm-placeholder": { color: themeDef.textMuted, fontStyle: "italic" },
         }),
-// placeholder removed for now
         EditorView.lineWrapping,
       ],
     });
@@ -175,7 +167,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
       view.destroy();
       viewRef.current = null;
     };
-  }, [getLangExt, getTheme, theme, placeholder]);
+  }, [getLangExt, getThemeDef, theme, placeholder]);
 
   // 同步外部 value 变化
   useEffect(() => {
@@ -187,13 +179,33 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
     }
   }, [value]);
 
+  // 动态计算是否需要滚动
+  const themeDef = getThemeDef();
+  const lineHeightPx = 23; // 0.9375rem * 1.65 ≈ 23px
+  const defaultMaxLines = 100;
+  const actualLineCount = value.split("\n").length;
+  const needsScroll = actualLineCount > defaultMaxLines;
+  const maxHeight = needsScroll ? defaultMaxLines * lineHeightPx + 24 : undefined;
+
   return (
     <div
-      ref={containerRef}
-      className="cm-editor-container"
-      onFocus={onFocus}
-      onBlur={onBlur}
-      style={{ backgroundColor: (THEME_DEFS[theme] || THEME_DEFS.default).bg }}
-    />
+      className="cm-editor-wrapper"
+      style={{
+        resize: needsScroll ? "vertical" : "none",
+        maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+        minHeight: "60px",
+        overflow: "hidden",
+        position: "relative",
+        backgroundColor: themeDef.bg,
+      }}
+    >
+      <div
+        ref={containerRef}
+        className="cm-editor-container"
+        onFocus={onFocus}
+        onBlur={onBlur}
+        style={{ backgroundColor: themeDef.bg, height: "100%" }}
+      />
+    </div>
   );
 }

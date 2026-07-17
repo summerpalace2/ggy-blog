@@ -51,8 +51,8 @@ const CODE_THEMES = [
 
 // ── 代码块主题定义（背景/边框/文字颜色） ──
 const CODE_THEME_DEFS: Record<string, { bg: string; header: string; border: string; text: string; textMuted: string; codeText: string }> = {
-  default:  { bg: "#1e1e1e", header: "#2d2d2d", border: "#333", text: "#ccc", textMuted: "#888", codeText: "#d4d4d4" },
-  dark:     { bg: "#0d1117", header: "#161b22", border: "#30363d", text: "#c9d1d9", textMuted: "#8b949e", codeText: "#e6edf3" },
+  default:  { bg: "rgba(245,245,247,1)", header: "rgba(238,238,240,1)", border: "#d1d5da", text: "#24292f", textMuted: "#6e7781", codeText: "#1f2328" },
+  dark:     { bg: "#1a1b26", header: "#24283b", border: "#414868", text: "#c0caf5", textMuted: "#7f88b3", codeText: "#c0caf5" },
   monokai:  { bg: "#272822", header: "#3e3d32", border: "#49483e", text: "#f8f8f2", textMuted: "#a6a28c", codeText: "#f8f8f2" },
   dracula:  { bg: "#282a36", header: "#44475a", border: "#6272a4", text: "#f8f8f2", textMuted: "#6272a4", codeText: "#f8f8f2" },
   github:   { bg: "#f6f8fa", header: "#eaeef2", border: "#d0d7de", text: "#1f2328", textMuted: "#656d76", codeText: "#1f2328" },
@@ -535,23 +535,28 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff5f56" }} />
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ffbd2e" }} />
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#27c93f" }} />
-              <span className="font-mono text-[10px] ml-2 font-bold" style={{ color: langColor }}>{(block.lang || "auto").toUpperCase()}</span>
+              <span className="font-mono text-sm ml-2 font-bold" style={{ color: langColor }}>{(block.lang || "auto").toUpperCase()}</span>
             </div>
             <div className="flex items-center gap-2">
               <select value={block.lang || ""} onChange={(e) => onChange({ ...block, lang: e.target.value || undefined })}
-                className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
-                style={{ backgroundColor: "rgba(128,128,128,0.15)", color: themeDef.text }}>
+                className="font-mono text-sm px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer font-medium"
+                style={{ backgroundColor: "transparent", color: themeDef.text }}>
                 <option value="">自动检测</option>
                 {LANG_OPTIONS.map((l) => (<option key={l} value={l}>{l}</option>))}
               </select>
               <select value={block.codeTheme || "default"} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
-                className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
-                style={{ backgroundColor: "rgba(128,128,128,0.15)", color: themeDef.text }}>
+                className="font-mono text-sm px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer font-medium"
+                style={{ backgroundColor: "transparent", color: themeDef.text }}>
                 {CODE_THEMES.map((t) => (<option key={t.id} value={t.id}>{t.label}</option>))}
               </select>
-              <button onClick={onDelete} className="font-mono text-[10px] hover:opacity-70" style={{ color: themeDef.textMuted }}>删除</button>
+              <button onClick={onDelete} className="font-mono text-sm hover:opacity-70" style={{ color: themeDef.textMuted }}>删除</button>
               <button onClick={async () => { await navigator.clipboard.writeText(rawCode); setCopyFeedback(true); setTimeout(() => setCopyFeedback(false), 2000); }}
-                className="font-mono text-[10px] hover:opacity-70" style={{ color: themeDef.textMuted }}>{copyFeedback ? "已复制" : "复制"}</button>
+                className="flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--bg-subtle)] transition-colors" style={{ color: themeDef.textMuted }} title={copyFeedback ? "已复制" : "复制"}>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="5" y="5" width="9" height="9" rx="1" />
+                    <path d="M3 11V3h8" />
+                  </svg>
+                </button>
             </div>
           </div>
           <CodeMirrorBlock
@@ -657,7 +662,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 px-4 py-3 outline-none italic"
-          style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
+          style={{ color: "var(--text-secondary)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em" }}
           placeholder="引用内容…" spellCheck={false} />
       </div>
     );
@@ -711,7 +716,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="w-full py-0.5 outline-none"
-            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
+            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em" }}
             placeholder="1. 第一项" spellCheck={false} />
         </div>
       );
@@ -726,7 +731,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="w-full py-0.5 outline-none"
-          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
+          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em" }}
           placeholder="- 列表项" spellCheck={false} />
       </div>
     );
@@ -745,7 +750,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
-            style={{ color: block.checked ? "var(--text-muted)" : "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", textDecoration: block.checked ? "line-through" : "none" }}
+            style={{ color: block.checked ? "var(--text-muted)" : "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em", textDecoration: block.checked ? "line-through" : "none" }}
             placeholder="待办事项…" spellCheck={false} />
         </div>
       );
@@ -766,7 +771,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
             onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
             className="flex-1 outline-none"
-            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
+            style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em" }}
             placeholder="提示内容…" spellCheck={false} />
         </div>
       );
@@ -837,7 +842,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="w-full outline-none"
-              style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em" }}
+              style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em" }}
               placeholder="折叠标题…" spellCheck={false} />
             <div className="overflow-hidden" style={{ maxHeight: block.collapsed ? 0 : 2000, opacity: block.collapsed ? 0 : 1, transition: "max-height 0.3s ease, opacity 0.3s ease" }}>
               <div className="ml-4 mt-1 pl-4 border-l-2" style={{ borderColor: "var(--border-light)" }}>
@@ -956,7 +961,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
                 onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
                 className="flex-1 min-w-0 outline-none"
-                style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
+                style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
                 placeholder={placeholderText} spellCheck={false} />
               {block.sideImage && (
                 <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
@@ -1005,7 +1010,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
           className="flex-1 min-w-0 outline-none"
-          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
+          style={{ color: "var(--text)", caretColor: "var(--accent)", fontFamily: "var(--font-sans)", fontSize: "1.0625rem", lineHeight: 1.2, minHeight: "1em", ...headingStyle }}
           placeholder={placeholderText} spellCheck={false} />
         {block.sideImage && (
           <div className="relative shrink-0 group/sideimg" style={{ width: (block.sideImgWidth ?? 50) + "%", maxWidth: "100%" }}>
