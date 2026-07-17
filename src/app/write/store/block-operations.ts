@@ -36,7 +36,7 @@ export function insertAfter(
     });
   });
   // DOM ?????,????
-  requestCursorRestoration(newBlock.id, "end");
+  requestCursorRestoration(newBlock.id, "start"); // [Fix] cursor at start of new block after Enter split
   const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
   if (el) el.focus();
 }
@@ -78,7 +78,7 @@ export function splitBlock(
     });
   });
   // DOM ?????,?? onFocus ????
-  requestCursorRestoration(newBlock.id, "end");
+  requestCursorRestoration(newBlock.id, "start"); // [Fix] cursor at start of new block after Enter split
   const el = document.querySelector(`[data-block="${newBlock.id}"] [contenteditable]`) as HTMLElement;
   if (el) el.focus();
 }
@@ -187,11 +187,18 @@ export function mergeUpward(
         return updated;
       }
 
-      // 正常合并: 把 content 拼接到前一块（即使前一块当前为空也合并，把内容移过去）
-      // [Fix-B2] 空块合并：前一块为空时 strip <br> 残影，直接替换内容
+      // 正常合并: 前一块非空时拼接内容; 前一块为空时删空块
+      // [Fix-B2] 空块不合并: 删空块,当前块上移
       // [Fix-BS] 使用 React state 而非 DOM 读取，避免陈旧内容
       const prevHtml = previousBlock.html;
       const strippedPrevHtml = !prevHtml.replace(/<[^>]+>/g, "").trim() ? "" : prevHtml;
+      // [Fix] 前一块为空: 删空块，当前块上移，光标在当前块行首
+      if (!strippedPrevHtml) {
+        updated.splice(realIndex - 1, 1);
+        focusTargetArr[0] = { blockId: currentBlock.id, type: "start" };
+        return updated;
+      }
+
       const mergedHtml = strippedPrevHtml + content;
       updated[realIndex - 1] = { ...previousBlock, html: mergedHtml } as Block;
       updated.splice(realIndex, 1);
