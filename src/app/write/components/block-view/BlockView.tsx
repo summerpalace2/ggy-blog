@@ -1021,7 +1021,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
         {/* 内容区 */}
         <div className="flex-1 min-w-0 rounded-r-lg"
-          style={{ paddingLeft: 4, borderLeft: gutterHovered ? "2px solid var(--accent)" : "2px solid transparent", transition: "border-color 0.15s ease" }}>
+          style={{ paddingLeft: 4, borderLeft: gutterHovered ? "3px solid var(--accent)" : "3px solid transparent", backgroundColor: gutterHovered ? "color-mix(in srgb, var(--accent) 6%, transparent)" : "transparent", transition: "border-color 0.15s ease, background-color 0.15s ease", borderRadius: "0 4px 4px 0" }}>
           {renderBlockContent()}
         </div>
       </div>
