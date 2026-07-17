@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
+import { Resizer } from "./Resizer";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, drawSelection, rectangularSelection } from "@codemirror/view";
 import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
@@ -79,12 +80,14 @@ interface CodeMirrorBlockProps {
 
 export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBackspaceEmpty, onFocus, onBlur, placeholder }: CodeMirrorBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onBackspaceEmptyRef = useRef(onBackspaceEmpty);
 
   onChangeRef.current = onChange;
   onBackspaceEmptyRef.current = onBackspaceEmpty;
+  const [showScroll, setShowScroll] = useState(false);
 
   // 获取语言扩展
   const getLangExt = useCallback(() => {
@@ -169,6 +172,21 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
     };
   }, [getLangExt, getThemeDef, theme, placeholder]);
 
+
+  // ResizeObserver: track wrapper height to determine if scroll needed
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    const ro = new ResizeObserver(() => {
+      const lineH = 23;
+      const maxLines = Math.floor(wrapper.clientHeight / lineH);
+      const actualLines = value.split("\n").length;
+      setShowScroll(actualLines > maxLines);
+    });
+    ro.observe(wrapper);
+    return () => ro.disconnect();
+  }, [value]);
+
   // 同步外部 value 变化
   useEffect(() => {
     const view = viewRef.current;
@@ -179,22 +197,22 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
     }
   }, [value]);
 
-  // 动态计算是否需要滚动
   const themeDef = getThemeDef();
   const lineHeightPx = 23; // 0.9375rem * 1.65 ≈ 23px
   const defaultMaxLines = 100;
   const actualLineCount = value.split("\n").length;
-  const needsScroll = actualLineCount > defaultMaxLines;
-  const maxHeight = needsScroll ? defaultMaxLines * lineHeightPx + 24 : undefined;
+  const initiallyNeedsScroll = actualLineCount > defaultMaxLines;
+  const maxHeight = initiallyNeedsScroll ? defaultMaxLines * lineHeightPx + 24 : undefined;
 
   return (
     <div
+      ref={wrapperRef}
       className="cm-editor-wrapper"
       style={{
-        resize: needsScroll ? "vertical" : "none",
+        resize: "none",
         maxHeight: maxHeight ? `${maxHeight}px` : undefined,
         minHeight: "60px",
-        overflow: needsScroll ? "auto" : "hidden",
+        overflow: showScroll ? "auto" : "hidden",
         position: "relative",
         backgroundColor: themeDef.bg,
       }}
