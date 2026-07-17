@@ -296,25 +296,27 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
   const maxHeight = initiallyNeedsScroll ? defaultMaxLines * lineHeightPx + 24 : undefined;
 
   return (
-    <div
-      ref={wrapperRef}
-      className="cm-editor-wrapper"
-      style={{
-        resize: "none",
-        maxHeight: maxHeight ? `${maxHeight}px` : undefined,
-        minHeight: "60px",
-        overflow: showScroll ? "auto" : "hidden",
-        position: "relative",
-        backgroundColor: themeDef.bg,
-      }}
-    >
+    <div className="cm-editor-outer" style={{ position: 'relative' }}>
       <div
-        ref={containerRef}
-        className="cm-editor-container"
-        onFocus={onFocus}
-        onBlur={onBlur}
-        style={{ backgroundColor: themeDef.bg }}
-      />
+        ref={wrapperRef}
+        className="cm-editor-wrapper"
+        style={{
+          resize: "none",
+          maxHeight: maxHeight ? `${maxHeight}px` : undefined,
+          minHeight: "60px",
+          overflow: showScroll ? "auto" : "hidden",
+          position: "relative",
+          backgroundColor: themeDef.bg,
+        }}
+      >
+        <div
+          ref={containerRef}
+          className="cm-editor-container"
+          onFocus={onFocus}
+          onBlur={onBlur}
+          style={{ backgroundColor: themeDef.bg }}
+        />
+      </div>
       <Resizer wrapperRef={wrapperRef} lineHeightPx={lineHeightPx} />
     </div>
   );

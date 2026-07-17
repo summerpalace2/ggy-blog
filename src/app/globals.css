@@ -183,10 +183,13 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
 }
 
 /* Resize bar — positioned below the code block */
+.cm-editor-outer {
+  position: relative;
+}
 .cm-resize-bar {
   position: absolute;
   left: 50%;
-  bottom: -8px;
+  bottom: -4px;
   transform: translateX(-50%);
   width: 48px;
   height: 6px;
@@ -196,12 +199,12 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
   opacity: 0;
   cursor: ns-resize;
   border-radius: 3px;
-  background: rgba(128,128,128,0.18);
+  background: rgba(128,128,128,0.2);
   transition: opacity 0.15s ease, background 0.15s ease;
   z-index: 10;
   pointer-events: auto;
 }
-.cm-editor-wrapper:hover .cm-resize-bar {
+.cm-editor-outer:hover .cm-resize-bar {
   opacity: 1;
 }
 .cm-resize-bar:hover {
