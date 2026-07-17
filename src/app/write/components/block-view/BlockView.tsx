@@ -109,8 +109,7 @@ export const BlockView: FC<Props> = ({
   }, [olMenu]);
   const plusRef = useRef<HTMLButtonElement>(null);
   const typeRef = useRef<HTMLButtonElement>(null);
-  const [gutterHovered, setGutterHovered] = useState(false);
-  const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
+    const [linkPopup, setLinkPopup] = useState<{ x: number; y: number; url: string; text: string } | null>(null);
   const linkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const linkHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 图片缩放相关
@@ -1042,10 +1041,10 @@ if (["ol", "ul", "todo"].includes(block.type)) {
   // ═══════════════════════════════════════
   return (
     <div className="group relative" data-block={block.id} {...(isHeading ? { "data-heading": "true" } as Record<string, string> : {})}>
-      <div className="flex" style={{ minHeight: block.type === "hr" ? 16 : block.type === "code" ? 0 : 24 }}>
+      <div className="flex items-start" style={{ minHeight: block.type === "hr" ? 16 : block.type === "code" ? 0 : 24 }}>
         {/* 左侧操作区 */}
         <div className="w-14 shrink-0 pt-0.5 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg relative"
-          onMouseEnter={() => setGutterHovered(true)} onMouseLeave={() => setGutterHovered(false)}>
+          >
           {isEmpty ? (
             <button ref={plusRef} onMouseDown={(e) => { e.preventDefault(); openInsertPicker(); }}
               className="w-8 h-8 flex items-center justify-center rounded-full text-xl font-bold hover:scale-110 hover:bg-[var(--bg-subtle)] transition-transform group/plus relative"
@@ -1069,7 +1068,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
         {/* 内容区 */}
         <div className="flex-1 min-w-0 rounded-r-lg"
-          style={{ paddingLeft: 4, borderLeft: gutterHovered ? "3px solid var(--accent)" : "3px solid transparent", backgroundColor: gutterHovered ? "color-mix(in srgb, var(--accent) 6%, transparent)" : "transparent", transition: "border-color 0.15s ease, background-color 0.15s ease", borderRadius: "0 4px 4px 0" }}>
+          style={{ paddingLeft: 4 }}>
           {renderBlockContent()}
         </div>
       </div>
