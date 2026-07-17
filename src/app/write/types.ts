@@ -10,8 +10,10 @@ export interface Block {
   id: string;
   type: BType;
   html: string;
+  text?: string;
   checked?: boolean;
   lang?: string;
+  codeTheme?: string;
   calloutType?: "info" | "tip" | "warning" | "danger";
   collapsed?: boolean;
   toggleContent?: string;

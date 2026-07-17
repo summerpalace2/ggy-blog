@@ -19,6 +19,34 @@ import {
 import { requestCursorRestoration } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
 
+
+// ── 代码块语言颜色映射 ──
+const LANG_COLORS: Record<string, string> = {
+  javascript: "#f7df1e", typescript: "#3178c6", python: "#3776ab",
+  css: "#264de4", html: "#e34f26", json: "#888888",
+  bash: "#4eaa25", markdown: "#083fa1", sql: "#e38c00",
+  rust: "#dea584", go: "#00add8", java: "#ed8b00",
+  c: "#a8b9cc", cpp: "#00599c", kotlin: "#7f52ff",
+  ruby: "#cc342d", php: "#777bb4", swift: "#fa7343",
+  default: "#666666",
+};
+
+const LANG_OPTIONS = [
+  "javascript", "typescript", "python", "css", "html", "json",
+  "bash", "markdown", "sql", "rust", "go", "java", "c", "cpp",
+  "kotlin", "ruby", "php", "swift",
+];
+
+const CODE_THEMES = [
+  { id: "default", label: "默认" },
+  { id: "dark", label: "Dark" },
+  { id: "monokai", label: "Monokai" },
+  { id: "dracula", label: "Dracula" },
+  { id: "github", label: "GitHub" },
+  { id: "nord", label: "Nord" },
+  { id: "solarized", label: "Solarized" },
+] as const;
+
 interface Props {
   block: Block;
   index: number;
@@ -482,21 +510,28 @@ if (["ol", "ul", "todo"].includes(block.type)) {
     if (block.type === "code") {
       const highlighted = highlightCode(block.html, block.lang);
       const linedHtml = wrapCodeLines(highlighted, block.html);
+      const langColor = LANG_COLORS[block.lang || "default"] || LANG_COLORS.default;
+      const theme = block.codeTheme || "default";
       return (
         <div className="rounded-xl overflow-hidden border line-numbers" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--code-block-header)" }}>
+          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--code-block-header)", borderLeft: `3px solid ${langColor}` }}>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff5f56" }} />
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ffbd2e" }} />
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#27c93f" }} />
-              <span className="font-mono text-[10px] ml-2" style={{ color: "#666" }}>{block.lang || "auto"}</span>
+              <span className="font-mono text-[10px] ml-2 font-bold" style={{ color: langColor }}>{(block.lang || "auto").toUpperCase()}</span>
             </div>
             <div className="flex items-center gap-2">
               <select value={block.lang || ""} onChange={(e) => onChange({ ...block, lang: e.target.value || undefined })}
                 className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
                 style={{ backgroundColor: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
                 <option value="">自动检测</option>
-                {["javascript", "typescript", "python", "css", "html", "json", "bash", "markdown", "sql", "rust", "go", "java", "c", "cpp"].map((l) => (<option key={l} value={l}>{l}</option>))}
+                {LANG_OPTIONS.map((l) => (<option key={l} value={l}>{l}</option>))}
+              </select>
+              <select value={theme} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
+                className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
+                style={{ backgroundColor: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
+                {CODE_THEMES.map((t) => (<option key={t.id} value={t.id}>{t.label}</option>))}
               </select>
               <button onClick={onDelete} className="font-mono text-[10px] hover:opacity-70" style={{ color: "#888" }}>删除</button>
               <button onClick={async () => { await navigator.clipboard.writeText(block.html); setCopyFeedback(true); setTimeout(() => setCopyFeedback(false), 2000); }}
@@ -508,12 +543,32 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               style={{ backgroundColor: "var(--code-block-bg)", color: "var(--code-block-text)", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
               <code dangerouslySetInnerHTML={{ __html: linedHtml || `<span class="line">&nbsp;</span>` }} />
             </pre>
-            <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
-                            blockId={block.id}
-              onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
+            <textarea
+              value={block.text !== undefined ? block.text : block.html.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')}
+              onChange={(e) => {
+                const raw = e.target.value;
+                onChange({ ...block, text: raw, html: escapeHtml(raw) });
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Backspace" && !(e.target as HTMLTextAreaElement).value && onDelete) { e.preventDefault(); onDelete(); }
+                if (e.key === "Tab") {
+                  e.preventDefault();
+                  const ta = e.target as HTMLTextAreaElement;
+                  const start = ta.selectionStart, end = ta.selectionEnd;
+                  const v = ta.value;
+                  ta.value = v.slice(0, start) + "  " + v.slice(end);
+                  ta.selectionStart = ta.selectionEnd = start + 2;
+                  onChange({ ...block, text: ta.value, html: escapeHtml(ta.value) });
+                }
+              }}
+              onInput={(e) => {
+                const ta = e.target as HTMLTextAreaElement;
+                ta.style.height = "auto";
+                ta.style.height = Math.max(100, ta.scrollHeight) + "px";
+              }}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
-              className="relative px-4 py-3 font-mono text-sm leading-relaxed outline-none"
-              style={{ color: "transparent", caretColor: "var(--accent)", backgroundColor: "transparent", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 100 }}
+              className="relative w-full px-4 py-3 font-mono text-sm leading-relaxed outline-none resize-none"
+              style={{ color: "transparent", caretColor: langColor, backgroundColor: "transparent", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 100, border: "none" }}
               placeholder="输入代码…" spellCheck={false} />
           </div>
         </div>
