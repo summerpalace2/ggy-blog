@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useCallback, RefObject } from "react";
 
@@ -24,7 +24,7 @@ export function Resizer({ wrapperRef, lineHeightPx }: ResizerProps) {
       const delta = ev.clientY - startY;
       const newHeight = Math.max(lineHeightPx * 3, startHeight + delta);
       wrapper.style.height = newHeight + "px";
-      wrapper.style.maxHeight = "none"; // user override
+      wrapper.style.maxHeight = "none";
     };
 
     const onMouseUp = () => {
@@ -39,15 +39,11 @@ export function Resizer({ wrapperRef, lineHeightPx }: ResizerProps) {
 
   return (
     <div
-      className="cm-resize-handle"
+      className="cm-resize-bar"
       onMouseDown={onMouseDown}
       title="拖拽调整代码块高度"
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M1 11L11 1" />
-        <path d="M5 11L11 5" />
-        <path d="M9 11L11 9" />
-      </svg>
+      <div className="cm-resize-bar-thumb" />
     </div>
   );
 }
