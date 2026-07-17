@@ -163,24 +163,26 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
 .cm-editor-wrapper:hover {
   box-shadow: inset 0 0 0 1px rgba(128,128,128,0.15);
 }
-.cm-editor-wrapper:hover::-webkit-scrollbar {
-  display: block;
+.cm-editor-wrapper {
+  transition: box-shadow 0.15s ease;
+}
+.cm-editor-wrapper:hover {
+  box-shadow: inset 0 0 0 1px rgba(128,128,128,0.15);
 }
 .cm-editor-wrapper::-webkit-scrollbar {
   width: 6px;
-  display: none;
 }
 .cm-editor-wrapper::-webkit-scrollbar-track {
   background: transparent;
 }
 .cm-editor-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(128,128,128,0.3);
+  background: transparent;
   border-radius: 3px;
 }
-.cm-editor-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(128,128,128,0.5);
+.cm-editor-wrapper:hover::-webkit-scrollbar-thumb {
+  background: rgba(128,128,128,0.4);
 }
-.cm-editor-wrapper:hover {
-  overflow: auto !important;
+.cm-editor-wrapper:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(128,128,128,0.6);
 }
 

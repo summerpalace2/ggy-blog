@@ -142,7 +142,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         backspaceKeymap,
         keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...completionKeymap, indentWithTab]),
         EditorView.theme({
-          "&": { backgroundColor: themeDef.bg, color: themeDef.codeText, height: "100%" },
+          "&": { backgroundColor: themeDef.bg, color: themeDef.codeText },
           ".cm-content": { caretColor: themeDef.codeText, fontFamily: "var(--font-mono, monospace)", fontSize: "0.9375rem", lineHeight: "1.65", padding: "12px 0" },
           ".cm-cursor": { borderLeftColor: themeDef.codeText },
           ".cm-activeLine": { backgroundColor: "rgba(128,128,128,0.08)" },
@@ -194,7 +194,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         resize: needsScroll ? "vertical" : "none",
         maxHeight: maxHeight ? `${maxHeight}px` : undefined,
         minHeight: "60px",
-        overflow: "hidden",
+        overflow: needsScroll ? "auto" : "hidden",
         position: "relative",
         backgroundColor: themeDef.bg,
       }}
@@ -204,7 +204,7 @@ export function CodeMirrorBlock({ value, lang, theme = "default", onChange, onBa
         className="cm-editor-container"
         onFocus={onFocus}
         onBlur={onBlur}
-        style={{ backgroundColor: themeDef.bg, height: "100%" }}
+        style={{ backgroundColor: themeDef.bg }}
       />
     </div>
   );
