@@ -182,11 +182,11 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
   background: rgba(128,128,128,0.55);
 }
 
-/* Resize bar — full-width bar at the bottom of the code block */
+/* Resize bar — positioned below the code block */
 .cm-resize-bar {
   position: absolute;
   left: 50%;
-  bottom: 0;
+  bottom: -8px;
   transform: translateX(-50%);
   width: 48px;
   height: 6px;
