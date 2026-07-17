@@ -47,6 +47,26 @@ const CODE_THEMES = [
   { id: "solarized", label: "Solarized" },
 ] as const;
 
+const THEME_CDN: Record<string, string> = {
+  default: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css",
+  dark: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css",
+  monokai: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai.min.css",
+  dracula: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/dracula.min.css",
+  github: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css",
+  nord: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/nord.min.css",
+  solarized: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/solarized-light.min.css",
+};
+
+const THEME_CSS: Record<string, string> = {
+  default: "highlight.js/styles/github.css",
+  dark: "highlight.js/styles/github-dark.css",
+  monokai: "highlight.js/styles/monokai.css",
+  dracula: "highlight.js/styles/dracula.css",
+  github: "highlight.js/styles/github.css",
+  nord: "highlight.js/styles/nord.css",
+  solarized: "highlight.js/styles/solarized-light.css",
+};
+
 interface Props {
   block: Block;
   index: number;
@@ -71,6 +91,24 @@ export const BlockView: FC<Props> = ({
   const edRef = useRef<HTMLDivElement>(null);
   const flushRef = useRef<(() => string) | null>(null);
   const listDemotingRef = useRef(false); // [Fix] BS锁
+  
+  // 动态加载代码块主题 CSS
+  useEffect(() => {
+    const theme = block.codeTheme || "default";
+    const url = THEME_CDN[theme] || THEME_CDN.default;
+    let link = document.getElementById("hljs-theme") as HTMLLinkElement | null;
+    if (link) {
+      link.href = url;
+    } else {
+      link = document.createElement("link");
+      link.id = "hljs-theme";
+      link.rel = "stylesheet";
+      link.href = url;
+      document.head.appendChild(link);
+    }
+  }, [block.codeTheme]);
+
+
   const _focused = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ x: 0, y: 0 });
@@ -508,8 +546,9 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 代码块 ──
     if (block.type === "code") {
-      const highlighted = highlightCode(block.html, block.lang);
-      const linedHtml = wrapCodeLines(highlighted, block.html);
+      const rawCode = block.text !== undefined ? block.text : block.html.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
+      const highlighted = highlightCode(rawCode, block.lang);
+      const linedHtml = wrapCodeLines(highlighted, rawCode);
       const langColor = LANG_COLORS[block.lang || "default"] || LANG_COLORS.default;
       const theme = block.codeTheme || "default";
       return (
@@ -539,7 +578,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             </div>
           </div>
           <div className="relative" style={{ minHeight: 100 }}>
-            <pre className="absolute inset-0 px-4 py-3 font-mono text-sm leading-relaxed overflow-hidden pointer-events-none"
+            <pre className="absolute inset-0 px-4 py-3 font-mono text-sm leading-relaxed overflow-auto pointer-events-none"
               style={{ backgroundColor: "var(--code-block-bg)", color: "var(--code-block-text)", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
               <code dangerouslySetInnerHTML={{ __html: linedHtml || `<span class="line">&nbsp;</span>` }} />
             </pre>
@@ -565,6 +604,13 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 const ta = e.target as HTMLTextAreaElement;
                 ta.style.height = "auto";
                 ta.style.height = Math.max(100, ta.scrollHeight) + "px";
+                const pre = ta.previousElementSibling as HTMLElement;
+                if (pre) pre.scrollTop = ta.scrollTop;
+              }}
+              onScroll={(e) => {
+                const ta = e.target as HTMLTextAreaElement;
+                const pre = ta.previousElementSibling as HTMLElement;
+                if (pre) pre.scrollTop = ta.scrollTop;
               }}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
               className="relative w-full px-4 py-3 font-mono text-sm leading-relaxed outline-none resize-none"
