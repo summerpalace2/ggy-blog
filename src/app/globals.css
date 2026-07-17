@@ -1,4 +1,4 @@
-@import 'highlight.js/styles/github.css';
+/* highlight.js removed - using CodeMirror for code blocks */
 
 @import "tailwindcss";
 
@@ -146,3 +146,12 @@ h1, h2, h3, h4 { font-family: var(--font-sans); font-weight: 600; line-height: 1
   pointer-events: none;
   opacity: 0.6;
 }
+
+/* CodeMirror code block styles */
+.cm-editor-container { position: relative; font-family: var(--font-mono, monospace); }
+.cm-editor-container .cm-editor { height: 100%; font-family: var(--font-mono, monospace) !important; }
+.cm-editor-container .cm-scroller { font-family: var(--font-mono, monospace) !important; }
+.cm-editor-container .cm-content { font-family: var(--font-mono, monospace) !important; padding: 12px 16px !important; }
+.cm-editor-container .cm-line { font-family: var(--font-mono, monospace) !important; }
+.cm-editor-container .cm-gutters { border-right: none !important; }
+.cm-editor-container .cm-placeholder { font-style: italic; opacity: 0.5; }

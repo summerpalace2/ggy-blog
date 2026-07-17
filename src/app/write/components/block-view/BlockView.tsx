@@ -18,6 +18,7 @@ import {
 } from "../../utils";
 import { requestCursorRestoration } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
+import { CodeMirrorBlock } from "../code-block/CodeMirrorBlock";
 
 
 // ── 代码块语言颜色映射 ──
@@ -524,14 +525,9 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 代码块 ──
     if (block.type === "code") {
-      const theme = block.codeTheme || "default";
-      const themeDef = CODE_THEME_DEFS[theme] || CODE_THEME_DEFS.default;
+      const themeDef = CODE_THEME_DEFS[block.codeTheme || "default"] || CODE_THEME_DEFS.default;
       const langColor = LANG_COLORS[block.lang || "default"] || LANG_COLORS.default;
-      let rawCode = block.text !== undefined ? block.text : block.html.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
-      rawCode = rawCode.split("<br>").join("").split("<br/>").join("").split("<br />").join("").split("&nbsp;").join(" ");
-      const highlighted = highlightCode(rawCode, block.lang);
-      const linedHtml = wrapCodeLines(highlighted, rawCode);
-      const isEmpty = !rawCode.trim();
+      const rawCode = block.text !== undefined ? block.text : block.html.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
       return (
         <div className="rounded-xl overflow-hidden border" style={{ borderColor: themeDef.border, backgroundColor: themeDef.bg }}>
           <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: themeDef.header, borderLeft: `3px solid ${langColor}` }}>
@@ -548,7 +544,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 <option value="">自动检测</option>
                 {LANG_OPTIONS.map((l) => (<option key={l} value={l}>{l}</option>))}
               </select>
-              <select value={theme} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
+              <select value={block.codeTheme || "default"} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
                 className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
                 style={{ backgroundColor: "rgba(128,128,128,0.15)", color: themeDef.text }}>
                 {CODE_THEMES.map((t) => (<option key={t.id} value={t.id}>{t.label}</option>))}
@@ -558,37 +554,19 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 className="font-mono text-[10px] hover:opacity-70" style={{ color: themeDef.textMuted }}>{copyFeedback ? "已复制" : "复制"}</button>
             </div>
           </div>
-          <div className="relative" style={{ minHeight: 100 }}>
-            <pre
-              className="m-0 absolute inset-0 px-4 py-3 overflow-auto pointer-events-none whitespace-pre-wrap break-words"
-              style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.875rem", lineHeight: "1.65", tabSize: 2, color: themeDef.codeText, backgroundColor: "transparent" }}
-            ><code dangerouslySetInnerHTML={{ __html: linedHtml || " " }} /></pre>
-            <textarea
-              value={rawCode}
-              onChange={(e) => {
-                const raw = e.target.value;
-                onChange({ ...block, text: raw, html: escapeHtml(raw) });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Backspace" && isEmpty) { e.preventDefault(); onDelete(); return; }
-                if (e.key === "Tab") {
-                  e.preventDefault();
-                  const ta = e.currentTarget;
-                  const s = ta.selectionStart, en = ta.selectionEnd;
-                  ta.value = ta.value.slice(0, s) + "  " + ta.value.slice(en);
-                  ta.selectionStart = ta.selectionEnd = s + 2;
-                  onChange({ ...block, text: ta.value, html: escapeHtml(ta.value) });
-                }
-              }}
-              onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
-              onScroll={(e) => { const p = e.currentTarget.previousElementSibling as HTMLElement; if (p) p.scrollTop = e.currentTarget.scrollTop; }}
-              className="relative w-full m-0 px-4 py-3 outline-none resize-none whitespace-pre-wrap break-words"
-              style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.875rem", lineHeight: "1.65", tabSize: 2, caretColor: langColor, color: "transparent", backgroundColor: "transparent", border: "none", minHeight: 100 }}
-              placeholder="输入代码…" spellCheck={false} />
-          </div>
+          <CodeMirrorBlock
+            value={rawCode}
+            lang={block.lang}
+            theme={block.codeTheme || "default"}
+            onChange={(val) => onChange({ ...block, text: val, html: escapeHtml(val) })}
+            onBackspaceEmpty={onDelete}
+            onFocus={() => _focused[1](true)}
+            onBlur={() => _focused[1](false)}
+          />
         </div>
       );
     }
+
 
     // ── 图片 ──
     if (block.type === "img") {
