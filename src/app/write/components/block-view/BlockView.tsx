@@ -682,7 +682,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
       return (
         <div className="flex" style={{ paddingLeft: 0 }}>
           <div className="relative w-6 shrink-0 text-right pr-2 font-mono text-sm cursor-pointer select-none"
-            style={{ color: "var(--text-muted)", lineHeight: 1.6 }}
+            style={{ color: "var(--text-muted)", lineHeight: 1.4 }}
             onClick={() => setOlMenu(!olMenu)} title="点击设置编号">
             {olNumber ?? 1}.
             {olMenu && (
@@ -720,7 +720,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
     // ── 无序列表 ──
     if (block.type === "ul") return (
       <div className="flex" style={{ paddingLeft: 0 }}>
-        <div className="w-6 shrink-0 text-right pr-2 font-mono text-sm" style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>•</div>
+        <div className="w-6 shrink-0 text-right pr-2 font-mono text-sm" style={{ color: "var(--text-muted)", lineHeight: 1.4 }}>•</div>
         <ContentEditableArea html={block.html} innerRef={edRef} flushRef={flushRef} onChange={(html) => onChange({ ...block, html })}
                         blockId={block.id}
           onKeyDown={handleKeyDown} onPasteImg={handleImageFile} onDropImg={handleDropFile}
@@ -925,7 +925,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
       return (
         <div className="flex" style={{ paddingLeft: 0 }}>
           <div className="relative w-6 shrink-0 text-right pr-2 font-mono text-sm cursor-pointer select-none"
-            style={{ color: "var(--text-muted)", lineHeight: 1.6 }}
+            style={{ color: "var(--text-muted)", lineHeight: 1.4 }}
             onClick={() => setOlMenu(!olMenu)} title="点击设置编号">
             {olNumber ?? 1}.
             {olMenu && (
@@ -1042,13 +1042,13 @@ if (["ol", "ul", "todo"].includes(block.type)) {
   // ═══════════════════════════════════════
   return (
     <div className="group relative" data-block={block.id} {...(isHeading ? { "data-heading": "true" } as Record<string, string> : {})}>
-      <div className="flex" style={{ minHeight: block.type === "hr" ? 20 : block.type === "code" ? 0 : 32 }}>
+      <div className="flex" style={{ minHeight: block.type === "hr" ? 16 : block.type === "code" ? 0 : 24 }}>
         {/* 左侧操作区 */}
-        <div className="w-14 shrink-0 pt-1 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg relative"
+        <div className="w-14 shrink-0 pt-0.5 flex flex-col items-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer rounded-lg relative"
           onMouseEnter={() => setGutterHovered(true)} onMouseLeave={() => setGutterHovered(false)}>
           {isEmpty ? (
             <button ref={plusRef} onMouseDown={(e) => { e.preventDefault(); openInsertPicker(); }}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-2xl font-bold hover:scale-110 hover:bg-[var(--bg-subtle)] transition-transform group/plus relative"
+              className="w-8 h-8 flex items-center justify-center rounded-full text-xl font-bold hover:scale-110 hover:bg-[var(--bg-subtle)] transition-transform group/plus relative"
               style={{ color: "var(--accent)", lineHeight: 1 }}>
               +
               <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md font-sans text-[11px] whitespace-nowrap opacity-0 group-hover/plus:opacity-100 transition-opacity pointer-events-none z-50"
@@ -1056,7 +1056,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             </button>
           ) : (
             <button ref={typeRef} onMouseDown={(e) => { e.preventDefault(); openChangePicker(); }}
-              className="w-10 h-10 flex items-center justify-center rounded text-base font-bold hover:bg-[var(--bg-subtle)] group/type relative"
+              className="w-8 h-8 flex items-center justify-center rounded text-sm font-bold hover:bg-[var(--bg-subtle)] group/type relative"
               style={{ color: "var(--text-muted)", fontFamily: "'SF Mono', monospace", lineHeight: 1 }}>
               {currentTypeMeta.icon}
               <span className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 rounded-md font-sans text-[11px] whitespace-nowrap opacity-0 group-hover/type:opacity-100 transition-opacity pointer-events-none z-50"
