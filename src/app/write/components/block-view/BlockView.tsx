@@ -47,25 +47,18 @@ const CODE_THEMES = [
   { id: "solarized", label: "Solarized" },
 ] as const;
 
-const THEME_CDN: Record<string, string> = {
-  default: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css",
-  dark: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css",
-  monokai: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/monokai.min.css",
-  dracula: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/dracula.min.css",
-  github: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css",
-  nord: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/nord.min.css",
-  solarized: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/solarized-light.min.css",
+
+// ── 代码块主题定义（背景/边框/文字颜色） ──
+const CODE_THEME_DEFS: Record<string, { bg: string; header: string; border: string; text: string; textMuted: string; codeText: string }> = {
+  default:  { bg: "#1e1e1e", header: "#2d2d2d", border: "#333", text: "#ccc", textMuted: "#888", codeText: "#d4d4d4" },
+  dark:     { bg: "#0d1117", header: "#161b22", border: "#30363d", text: "#c9d1d9", textMuted: "#8b949e", codeText: "#e6edf3" },
+  monokai:  { bg: "#272822", header: "#3e3d32", border: "#49483e", text: "#f8f8f2", textMuted: "#a6a28c", codeText: "#f8f8f2" },
+  dracula:  { bg: "#282a36", header: "#44475a", border: "#6272a4", text: "#f8f8f2", textMuted: "#6272a4", codeText: "#f8f8f2" },
+  github:   { bg: "#f6f8fa", header: "#eaeef2", border: "#d0d7de", text: "#1f2328", textMuted: "#656d76", codeText: "#1f2328" },
+  nord:     { bg: "#2e3440", header: "#3b4252", border: "#4c566a", text: "#eceff4", textMuted: "#81a1c1", codeText: "#d8dee9" },
+  solarized:{ bg: "#fdf6e3", header: "#eee8d5", border: "#93a1a1", text: "#657b83", textMuted: "#93a1a1", codeText: "#586e75" },
 };
 
-const THEME_CSS: Record<string, string> = {
-  default: "highlight.js/styles/github.css",
-  dark: "highlight.js/styles/github-dark.css",
-  monokai: "highlight.js/styles/monokai.css",
-  dracula: "highlight.js/styles/dracula.css",
-  github: "highlight.js/styles/github.css",
-  nord: "highlight.js/styles/nord.css",
-  solarized: "highlight.js/styles/solarized-light.css",
-};
 
 interface Props {
   block: Block;
@@ -92,21 +85,6 @@ export const BlockView: FC<Props> = ({
   const flushRef = useRef<(() => string) | null>(null);
   const listDemotingRef = useRef(false); // [Fix] BS锁
   
-  // 动态加载代码块主题 CSS
-  useEffect(() => {
-    const theme = block.codeTheme || "default";
-    const url = THEME_CDN[theme] || THEME_CDN.default;
-    let link = document.getElementById("hljs-theme") as HTMLLinkElement | null;
-    if (link) {
-      link.href = url;
-    } else {
-      link = document.createElement("link");
-      link.id = "hljs-theme";
-      link.rel = "stylesheet";
-      link.href = url;
-      document.head.appendChild(link);
-    }
-  }, [block.codeTheme]);
 
 
   const _focused = useState(false);
@@ -546,14 +524,17 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 代码块 ──
     if (block.type === "code") {
-      const rawCode = block.text !== undefined ? block.text : block.html.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
+      const theme = block.codeTheme || "default";
+      const themeDef = CODE_THEME_DEFS[theme] || CODE_THEME_DEFS.default;
+      const langColor = LANG_COLORS[block.lang || "default"] || LANG_COLORS.default;
+      let rawCode = block.text !== undefined ? block.text : block.html.replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");
+      rawCode = rawCode.split("<br>").join("").split("<br/>").join("").split("<br />").join("").split("&nbsp;").join(" ");
       const highlighted = highlightCode(rawCode, block.lang);
       const linedHtml = wrapCodeLines(highlighted, rawCode);
-      const langColor = LANG_COLORS[block.lang || "default"] || LANG_COLORS.default;
-      const theme = block.codeTheme || "default";
+      const isEmpty = !rawCode.trim();
       return (
-        <div className="rounded-xl overflow-hidden border line-numbers" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "var(--code-block-header)", borderLeft: `3px solid ${langColor}` }}>
+        <div className="rounded-xl overflow-hidden border" style={{ borderColor: themeDef.border, backgroundColor: themeDef.bg }}>
+          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: themeDef.header, borderLeft: `3px solid ${langColor}` }}>
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff5f56" }} />
               <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ffbd2e" }} />
@@ -563,58 +544,46 @@ if (["ol", "ul", "todo"].includes(block.type)) {
             <div className="flex items-center gap-2">
               <select value={block.lang || ""} onChange={(e) => onChange({ ...block, lang: e.target.value || undefined })}
                 className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
-                style={{ backgroundColor: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
+                style={{ backgroundColor: "rgba(128,128,128,0.15)", color: themeDef.text }}>
                 <option value="">自动检测</option>
                 {LANG_OPTIONS.map((l) => (<option key={l} value={l}>{l}</option>))}
               </select>
               <select value={theme} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
                 className="font-mono text-[10px] px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer"
-                style={{ backgroundColor: "var(--bg-subtle)", color: "var(--text-secondary)" }}>
+                style={{ backgroundColor: "rgba(128,128,128,0.15)", color: themeDef.text }}>
                 {CODE_THEMES.map((t) => (<option key={t.id} value={t.id}>{t.label}</option>))}
               </select>
-              <button onClick={onDelete} className="font-mono text-[10px] hover:opacity-70" style={{ color: "#888" }}>删除</button>
-              <button onClick={async () => { await navigator.clipboard.writeText(block.html); setCopyFeedback(true); setTimeout(() => setCopyFeedback(false), 2000); }}
-                className="font-mono text-[10px] hover:opacity-70" style={{ color: "#888" }}>{copyFeedback ? "已复制" : "复制"}</button>
+              <button onClick={onDelete} className="font-mono text-[10px] hover:opacity-70" style={{ color: themeDef.textMuted }}>删除</button>
+              <button onClick={async () => { await navigator.clipboard.writeText(rawCode); setCopyFeedback(true); setTimeout(() => setCopyFeedback(false), 2000); }}
+                className="font-mono text-[10px] hover:opacity-70" style={{ color: themeDef.textMuted }}>{copyFeedback ? "已复制" : "复制"}</button>
             </div>
           </div>
           <div className="relative" style={{ minHeight: 100 }}>
-            <pre className="absolute inset-0 px-4 py-3 font-mono text-sm leading-relaxed overflow-auto pointer-events-none"
-              style={{ backgroundColor: "var(--code-block-bg)", color: "var(--code-block-text)", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-              <code dangerouslySetInnerHTML={{ __html: linedHtml || `<span class="line">&nbsp;</span>` }} />
-            </pre>
+            <pre
+              className="m-0 absolute inset-0 px-4 py-3 overflow-auto pointer-events-none whitespace-pre-wrap break-words"
+              style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.875rem", lineHeight: "1.65", tabSize: 2, color: themeDef.codeText, backgroundColor: "transparent" }}
+            ><code dangerouslySetInnerHTML={{ __html: linedHtml || " " }} /></pre>
             <textarea
-              value={block.text !== undefined ? block.text : block.html.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&')}
+              value={rawCode}
               onChange={(e) => {
                 const raw = e.target.value;
                 onChange({ ...block, text: raw, html: escapeHtml(raw) });
               }}
               onKeyDown={(e) => {
-                if (e.key === "Backspace" && !(e.target as HTMLTextAreaElement).value && onDelete) { e.preventDefault(); onDelete(); }
+                if (e.key === "Backspace" && isEmpty) { e.preventDefault(); onDelete(); return; }
                 if (e.key === "Tab") {
                   e.preventDefault();
-                  const ta = e.target as HTMLTextAreaElement;
-                  const start = ta.selectionStart, end = ta.selectionEnd;
-                  const v = ta.value;
-                  ta.value = v.slice(0, start) + "  " + v.slice(end);
-                  ta.selectionStart = ta.selectionEnd = start + 2;
+                  const ta = e.currentTarget;
+                  const s = ta.selectionStart, en = ta.selectionEnd;
+                  ta.value = ta.value.slice(0, s) + "  " + ta.value.slice(en);
+                  ta.selectionStart = ta.selectionEnd = s + 2;
                   onChange({ ...block, text: ta.value, html: escapeHtml(ta.value) });
                 }
               }}
-              onInput={(e) => {
-                const ta = e.target as HTMLTextAreaElement;
-                ta.style.height = "auto";
-                ta.style.height = Math.max(100, ta.scrollHeight) + "px";
-                const pre = ta.previousElementSibling as HTMLElement;
-                if (pre) pre.scrollTop = ta.scrollTop;
-              }}
-              onScroll={(e) => {
-                const ta = e.target as HTMLTextAreaElement;
-                const pre = ta.previousElementSibling as HTMLElement;
-                if (pre) pre.scrollTop = ta.scrollTop;
-              }}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
-              className="relative w-full px-4 py-3 font-mono text-sm leading-relaxed outline-none resize-none"
-              style={{ color: "transparent", caretColor: langColor, backgroundColor: "transparent", tabSize: 2, whiteSpace: "pre-wrap", wordBreak: "break-word", minHeight: 100, border: "none" }}
+              onScroll={(e) => { const p = e.currentTarget.previousElementSibling as HTMLElement; if (p) p.scrollTop = e.currentTarget.scrollTop; }}
+              className="relative w-full m-0 px-4 py-3 outline-none resize-none whitespace-pre-wrap break-words"
+              style={{ fontFamily: "var(--font-mono, monospace)", fontSize: "0.875rem", lineHeight: "1.65", tabSize: 2, caretColor: langColor, color: "transparent", backgroundColor: "transparent", border: "none", minHeight: 100 }}
               placeholder="输入代码…" spellCheck={false} />
           </div>
         </div>
