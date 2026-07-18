@@ -398,12 +398,13 @@ export const BlockView: FC<Props> = ({
           return;
         }
 
-        // 标题：空标题→直接删除，有内容→退化为正文
+        // 标题：空标题→直接删除，有内容→退化为正文段落
         if (["h1", "h2", "h3", "h4", "h5"].includes(block.type)) {
           if (!block.html.replace(/<[^>]+>/g, "").trim()) {
-            onBackspace(edEl.innerText || "");
+            onDelete();
           } else {
-            onBackspace(edEl.innerHTML || "");
+            onChange({ ...block, type: "p" as const, html: block.html });
+            requestCursorRestoration(block.id, "start");
           }
           return;
         }
@@ -510,7 +511,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
     // ── 分割线 ──
     if (block.type === "hr") return (
       <div className="py-2 relative group/hr cursor-pointer" tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onBackspace(""); } }}
+        onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onDelete(); } }}
         onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}>
         <div className="rounded transition-colors duration-150"
           style={{ borderTop: "2px solid var(--border)", marginLeft: -48 }} />
@@ -598,7 +599,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
       return (
         <div className="space-y-2" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onBackspace(""); } }}
+          onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onDelete(); } }}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}>
           {!imgUrl ? (
             <>
@@ -606,7 +607,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 <span className="text-lg shrink-0">🖼</span>
                 <input type="text" value={imgUrl && !imgUrl.startsWith("data:") ? imgUrl : ""}
                   onChange={(e) => { const url = e.target.value.trim(); if (url) onChange({ ...block, html: imageBlockHtml(url, "图片") }); }}
-                  onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !imgUrl) { e.preventDefault(); onBackspace(""); } }}
+                  onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !imgUrl) { e.preventDefault(); onDelete(); } }}
                   onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}
                   className="flex-1 font-sans text-sm outline-none"
                   style={{ backgroundColor: "transparent", color: "var(--text)", caretColor: "var(--accent)" }} placeholder="输入图片URL" />
@@ -871,7 +872,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
         <div className="py-3" tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === "Backspace" || e.key === "Delete") {
-              if (!block.html.trim()) { e.preventDefault(); onBackspace(""); }
+              if (!block.html.trim()) { e.preventDefault(); onDelete(); }
             }
           }}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}>
@@ -901,12 +902,12 @@ if (["ol", "ul", "todo"].includes(block.type)) {
       const url = block.html.trim();
       return (
         <div className="space-y-2" tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onBackspace(""); } }}
+          onKeyDown={(e) => { if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); onDelete(); } }}
           onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)}>
           <div className="flex items-center gap-3 py-2">
             <span className="text-lg shrink-0">🌐</span>
             <input type="text" value={url} onChange={(e) => onChange({ ...block, html: e.target.value })}
-              onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !url) { e.preventDefault(); onBackspace(""); } }}
+              onKeyDown={(e) => { if ((e.key === "Backspace" || e.key === "Delete") && !url) { e.preventDefault(); onDelete(); } }}
               placeholder="输入网页URL…" className="flex-1 font-sans text-sm outline-none"
               style={{ backgroundColor: "transparent", color: "var(--text)" }}
               onFocus={() => _focused[1](true)} onBlur={() => _focused[1](false)} />

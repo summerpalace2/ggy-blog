@@ -142,6 +142,14 @@ export function mergeUpward(
       const updated = [...prev];
       const isEmptyContent = !content.replace(/<[^>]+>/g, "").trim();
 
+      // [Fix] 当前块为空 + 前一块是特殊块 -> 删前特殊块（hr/img/table/code），当前块保留
+      if (isEmptyContent && realIndex > 0 && ["hr", "img", "table", "code"].includes(prev[realIndex - 1].type)) {
+        updated.splice(realIndex - 1, 1);
+        const newIdx = realIndex - 1;
+        focusTargetArr[0] = { blockId: currentBlock.id, type: "start" };
+        return updated;
+      }
+
       // [修复] 当前块内容为空 -> 删块；聚焦前一有内容块，若无则找后一块
       if (isEmptyContent && !["code", "hr", "img", "table"].includes(currentBlock.type)) {
         // [Fix-B16] 唯一空列表块退为段落
