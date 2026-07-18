@@ -98,6 +98,8 @@ export const BlockView: FC<Props> = ({
   useEffect(() => { setSideImgError(false); }, [block.sideImage]);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [olMenu, setOlMenu] = useState(false);
+  const [tableHoverCol, setTableHoverCol] = useState(-1);
+  const [tableHoverRow, setTableHoverRow] = useState(-1);
   useEffect(() => {
     if (!olMenu) return;
     const onDown = (e: MouseEvent) => {
@@ -780,9 +782,6 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 表格 ──
     if (block.type === "table") {
-      const [hoveredCol, setHoveredCol] = useState(-1);
-      const [hoveredRow, setHoveredRow] = useState(-1);
-
       const lines = block.html.split("\n").filter(l => l.trim().startsWith("|"));
       const parsed = lines.map(r => r.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => c.trim()));
       const headerCells = parsed[0] || [];
@@ -853,16 +852,16 @@ if (["ol", "ul", "todo"].includes(block.type)) {
       };
 
       return (
-        <div className="space-y-2" onMouseLeave={() => { setHoveredCol(-1); setHoveredRow(-1); }}>
+        <div className="space-y-2" onMouseLeave={() => { setTableHoverCol(-1); setTableHoverRow(-1); }}>
           <div className="relative rounded-lg border" style={{ borderColor: "var(--border)" }} data-table={block.id}>
             {/* 列控制栏 */}
             <div className="flex items-center border-b" style={{ borderColor: "var(--border-light)", backgroundColor: "var(--bg-subtle)", minHeight: 22 }}>
               <div style={{ width: 28, flexShrink: 0 }} />
               {headerCells.map((_, ci) => (
                 <div key={ci} className="relative flex-1 min-w-[60px] flex items-center justify-center"
-                  onMouseEnter={() => setHoveredCol(ci)} onMouseLeave={() => setHoveredCol(-1)}
+                  onMouseEnter={() => setTableHoverCol(ci)} onMouseLeave={() => setTableHoverCol(-1)}
                   style={{ height: 22 }}>
-                  {hoveredCol === ci && (
+                  {tableHoverCol === ci && (
                     <div className="flex items-center gap-0.5">
                       <button onClick={() => addCol(ci)} title="左侧添加列"
                         className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
@@ -895,10 +894,10 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                 </thead>
                 <tbody>
                   {dataRows.map((row, ri) => (
-                    <tr key={ri} onMouseEnter={() => setHoveredRow(ri)} onMouseLeave={() => setHoveredRow(-1)}
+                    <tr key={ri} onMouseEnter={() => setTableHoverRow(ri)} onMouseLeave={() => setTableHoverRow(-1)}
                       style={{ backgroundColor: ri % 2 === 0 ? "transparent" : "var(--bg-subtle)" }}>
                       <td className="!p-0 !border-0 relative" style={{ width: 28 }}>
-                        {hoveredRow === ri && (
+                        {tableHoverRow === ri && (
                           <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-10">
                             <button onClick={() => addRow(ri)} title="上方添加行"
                               className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
