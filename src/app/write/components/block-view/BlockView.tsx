@@ -642,7 +642,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                     className="absolute w-3 h-3 bg-white border-2 rounded-sm opacity-0 group-hover/img:opacity-100 transition-opacity cursor-nwse-resize pointer-events-auto"
                     style={{ borderColor: "var(--accent)", [pos.includes("n") ? "top" : "bottom"]: -5, [pos.includes("w") ? "left" : "right"]: -5 }} />
                 ))}
-                <button onClick={() => onChange({ ...block, html: "" })} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer z-10">✕</button>
+                <button onClick={() => onDelete()} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white text-[10px] flex items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer z-10">✕</button>
               </div>
               <div className="flex items-center gap-2">
                 <span className="font-sans text-[10px]" style={{ color: "var(--text-muted)" }}>{imgWidth}%</span>
