@@ -541,13 +541,13 @@ if (["ol", "ul", "todo"].includes(block.type)) {
               <select value={block.lang || ""} onChange={(e) => onChange({ ...block, lang: e.target.value || undefined })}
                 className="font-mono text-sm px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer font-medium"
                 style={{ backgroundColor: "transparent", color: themeDef.text }}>
-                <option value="">自动检测</option>
-                {LANG_OPTIONS.map((l) => (<option key={l} value={l}>{l}</option>))}
+                <option value="" style={{ color: themeDef.text, backgroundColor: themeDef.header }}>自动检测</option>
+                {LANG_OPTIONS.map((l) => (<option key={l} value={l} style={{ color: themeDef.text, backgroundColor: themeDef.header }}>{l}</option>))}
               </select>
               <select value={block.codeTheme || "default"} onChange={(e) => onChange({ ...block, codeTheme: e.target.value })}
                 className="font-mono text-sm px-1.5 py-0.5 rounded border-0 outline-none cursor-pointer font-medium"
                 style={{ backgroundColor: "transparent", color: themeDef.text }}>
-                {CODE_THEMES.map((t) => (<option key={t.id} value={t.id}>{t.label}</option>))}
+                {CODE_THEMES.map((t) => (<option key={t.id} value={t.id} style={{ color: themeDef.text, backgroundColor: themeDef.header }}>{t.label}</option>))}
               </select>
               <button onClick={onDelete} className="font-mono text-sm hover:opacity-70" style={{ color: themeDef.textMuted }}>删除</button>
               <button onClick={async () => { await navigator.clipboard.writeText(rawCode); setCopyFeedback(true); setTimeout(() => setCopyFeedback(false), 2000); }}
