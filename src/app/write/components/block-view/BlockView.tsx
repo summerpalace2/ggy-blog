@@ -780,14 +780,22 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 表格 ──
     if (block.type === "table") {
-      const rows = block.html.split("\n").filter((l) => l.trim().startsWith("|"));
-      const parsed = rows.map((r) => r.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map((c) => c.trim()));
-      const headerRow = parsed.length > 0 ? parsed[0] : [];
-      const hasSep = parsed.length > 1 && parsed[1].every((c) => /^[-:]+$/.test(c));
-      const dataRows = hasSep ? parsed.slice(2) : parsed.slice(1);
-      const aligns = hasSep ? (parsed[1] || []).map((c) => c.startsWith(":") && c.endsWith(":") ? "center" as const : c.endsWith(":") ? "right" as const : "left" as const) : [];
+      const [hoveredCol, setHoveredCol] = useState(-1);
+      const [hoveredRow, setHoveredRow] = useState(-1);
 
-      const tableToMarkdown = () => {
+      const lines = block.html.split("\n").filter(l => l.trim().startsWith("|"));
+      const parsed = lines.map(r => r.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => c.trim()));
+      const headerCells = parsed[0] || [];
+      const hasSep = parsed.length > 1 && parsed[1].every(c => /^[-:]+$/.test(c));
+      const dataRows = hasSep ? parsed.slice(2) : parsed.slice(1);
+      const aligns = hasSep ? parsed[1].map(c => c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : "left") : [];
+      const colCount = headerCells.length;
+      const rowCount = dataRows.length;
+
+      const colAlign = (i: number) => (aligns[i] || "left") as "left" | "center" | "right";
+
+      // DOM → Markdown 同步
+      const syncToMarkdown = () => {
         const tb = document.querySelector(`[data-table="${block.id}"] tbody`);
         const th = document.querySelector(`[data-table="${block.id}"] thead`);
         if (!tb || !th) return;
@@ -799,38 +807,137 @@ if (["ol", "ul", "todo"].includes(block.type)) {
         onChange({ ...block, html: escapeHtml(md) });
       };
 
+      // 添加行（0 = 第一行数据前，rowCount = 最后一行后）
+      const addRow = (pos: number) => {
+        const newRow = "|" + Array(colCount).fill(" ").join("|") + "|";
+        const off = hasSep ? 2 : 1;
+        const nl = [...lines];
+        nl.splice(off + pos, 0, newRow);
+        onChange({ ...block, html: escapeHtml(nl.join("\n")) });
+      };
+
+      // 删除行
+      const deleteRow = (pos: number) => {
+        if (rowCount <= 1) { onDelete(); return; }
+        const off = hasSep ? 2 : 1;
+        const nl = [...lines];
+        nl.splice(off + pos, 1);
+        onChange({ ...block, html: escapeHtml(nl.join("\n")) });
+      };
+
+      // 添加列
+      const addCol = (pos: number) => {
+        const nl = lines.map((r, ri) => {
+          const cells = r.split("|");
+          const ins = pos + 1;
+          if (ri === 1 && hasSep) {
+            const a = aligns[pos] || "left";
+            cells.splice(ins, 0, a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ");
+          } else {
+            cells.splice(ins, 0, " ");
+          }
+          return cells.join("|");
+        });
+        onChange({ ...block, html: escapeHtml(nl.join("\n")) });
+      };
+
+      // 删除列
+      const deleteCol = (pos: number) => {
+        if (colCount <= 1) { onDelete(); return; }
+        const nl = lines.map(r => {
+          const cells = r.split("|");
+          cells.splice(pos + 1, 1);
+          return cells.join("|");
+        });
+        onChange({ ...block, html: escapeHtml(nl.join("\n")) });
+      };
+
       return (
-        <div className="space-y-2">
-          <div className="overflow-x-auto rounded-lg border" style={{ borderColor: "var(--border)" }} data-table={block.id}>
-            <table className="w-full border-collapse font-sans text-sm">
-              <thead>
-                <tr style={{ backgroundColor: "var(--bg-subtle)" }}>
-                  {headerRow.map((cell: string, ci: number) => (
-                    <th key={ci} contentEditable suppressContentEditableWarning onInput={tableToMarkdown} onBlur={tableToMarkdown}
-                      className="px-3 py-2 text-left font-semibold border-b outline-none"
-                      style={{ borderColor: "var(--border)", color: "var(--text)", textAlign: aligns[ci] || "left" }}>{cell}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {dataRows.map((row: string[], ri: number) => (
-                  <tr key={ri} style={{ backgroundColor: ri % 2 === 0 ? "transparent" : "var(--bg-subtle)" }}>
-                    {row.map((cell: string, ci: number) => (
-                      <td key={ci} contentEditable suppressContentEditableWarning onInput={tableToMarkdown} onBlur={tableToMarkdown}
-                        className="px-3 py-2 border-b outline-none"
-                        style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: aligns[ci] || "left" }}>{cell}</td>
+        <div className="space-y-2" onMouseLeave={() => { setHoveredCol(-1); setHoveredRow(-1); }}>
+          <div className="relative rounded-lg border" style={{ borderColor: "var(--border)" }} data-table={block.id}>
+            {/* 列控制栏 */}
+            <div className="flex items-center border-b" style={{ borderColor: "var(--border-light)", backgroundColor: "var(--bg-subtle)", minHeight: 22 }}>
+              <div style={{ width: 28, flexShrink: 0 }} />
+              {headerCells.map((_, ci) => (
+                <div key={ci} className="relative flex-1 min-w-[60px] flex items-center justify-center"
+                  onMouseEnter={() => setHoveredCol(ci)} onMouseLeave={() => setHoveredCol(-1)}
+                  style={{ height: 22 }}>
+                  {hoveredCol === ci && (
+                    <div className="flex items-center gap-0.5">
+                      <button onClick={() => addCol(ci)} title="左侧添加列"
+                        className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
+                        style={{ backgroundColor: "var(--accent)", color: "white" }}>+</button>
+                      {colCount > 1 && (
+                        <button onClick={() => deleteCol(ci)} title="删除列"
+                          className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
+                          style={{ backgroundColor: "var(--text-muted)", color: "white" }}>×</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse font-sans text-sm">
+                <colgroup>
+                  <col style={{ width: 28 }} />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th className="!p-0 !border-0" style={{ width: 28 }}></th>
+                    {headerCells.map((cell, ci) => (
+                      <th key={ci} contentEditable suppressContentEditableWarning onInput={syncToMarkdown} onBlur={syncToMarkdown}
+                        className="px-3 py-2 text-left font-semibold border-b outline-none"
+                        style={{ borderColor: "var(--border)", color: "var(--text)", backgroundColor: "var(--bg-subtle)", textAlign: colAlign(ci) }}>{cell}</th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {dataRows.map((row, ri) => (
+                    <tr key={ri} onMouseEnter={() => setHoveredRow(ri)} onMouseLeave={() => setHoveredRow(-1)}
+                      style={{ backgroundColor: ri % 2 === 0 ? "transparent" : "var(--bg-subtle)" }}>
+                      <td className="!p-0 !border-0 relative" style={{ width: 28 }}>
+                        {hoveredRow === ri && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-10">
+                            <button onClick={() => addRow(ri)} title="上方添加行"
+                              className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
+                              style={{ backgroundColor: "var(--accent)", color: "white" }}>+</button>
+                            {rowCount > 1 && (
+                              <button onClick={() => deleteRow(ri)} title="删除行"
+                                className="w-4 h-4 rounded text-[10px] flex items-center justify-center opacity-80 hover:opacity-100"
+                                style={{ backgroundColor: "var(--text-muted)", color: "white" }}>×</button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      {row.map((cell, ci) => (
+                        <td key={ci} contentEditable suppressContentEditableWarning onInput={syncToMarkdown} onBlur={syncToMarkdown}
+                          className="px-3 py-2 border-b outline-none"
+                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci) }}>{cell}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 底部：添加行 / 添加列 / 删除表格 */}
+            <div className="flex items-center justify-between px-2 py-1.5 border-t" style={{ borderColor: "var(--border-light)", backgroundColor: "var(--bg-subtle)" }}>
+              <button onClick={() => addRow(rowCount)} className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
+                style={{ color: "var(--text-muted)" }}>+ 添加行</button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => addCol(colCount)} className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
+                  style={{ color: "var(--text-muted)" }}>+ 添加列</button>
+                <button onClick={() => onDelete()} className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
+                  style={{ color: "var(--text-muted)" }}>删除表格</button>
+              </div>
+            </div>
           </div>
-          <button onClick={() => onDelete()} className="font-sans text-[10px]" style={{ color: "var(--text-muted)" }}>删除表格</button>
         </div>
       );
     }
 
-    // ── 折叠列表 ──
     if (block.type === "toggle") {
       const toggle = () => onChange({ ...block, collapsed: !block.collapsed });
       return (
