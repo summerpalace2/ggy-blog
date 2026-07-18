@@ -95,7 +95,14 @@ export function detectMarkdownShortcut(trimmed: string): { type: BType; html: st
   if (trimmed.startsWith("- ") && trimmed.length > 2) return { type: "ul", html: escapeHtml(trimmed.slice(2)) };
   if ((trimmed.startsWith("[ ] ") || trimmed.startsWith("[] ")) && trimmed.length > 3) return { type: "todo", html: escapeHtml(trimmed.slice(4)) };
   if (/^\d+\.\s/.test(trimmed)) return { type: "ol", html: escapeHtml(trimmed.replace(/^\d+\.\s*/, "")) };
-  if (/^\|.+\|.*\|/.test(trimmed)) return { type: "table", html: escapeHtml(trimmed) };
+  if (/^\|.+\|.*\|/.test(trimmed)) {
+    const headers = trimmed.split("|").filter((c: string, i: number, a: string[]) => i > 0 && i < a.length - 1).map((c: string) => c.trim());
+    const colCount = headers.length;
+    const headerRow = "| " + headers.join(" | ") + " |";
+    const sepRow = "|" + Array(colCount).fill(" --- ").join("|") + "|";
+    const dataRow = "|" + Array(colCount).fill("   ").join("|") + "|";
+    return { type: "table" as const, html: escapeHtml([headerRow, sepRow, dataRow].join("\n")) };
+  }
   return null;
 }
 
