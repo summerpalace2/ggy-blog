@@ -782,102 +782,89 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 表格 ──
     if (block.type === "table") {
+      // Decode HTML entities for cell rendering
+      const decodeHtml = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+
       //  Parse markdown table into data model
       const parseTable = (): { headers: string[]; aligns: string[]; rows: string[][]; colCount: number } => {
         const mdLines = block.html.split("\n").filter(l => l.trim().startsWith("|"));
         const cells = mdLines.map(r => r.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => c.trim()));
         const headers = cells[0] || [];
-        const hasSep = cells.length > 1 && cells[1].every(c => /^[-:]+$/.test(c));
+        const hasSep = cells.length > 1 && cells[1].length > 0 && cells[1].every(c => /^[-:]+$/.test(c));
         const aligns = hasSep ? cells[1].map(c => c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : "left") : headers.map(() => "left");
         const dataRows = hasSep ? cells.slice(2) : cells.slice(1);
-        return { headers, aligns, rows: dataRows, colCount: headers.length };
+        // Pad rows to correct column count, decode HTML entities
+        const paddedRows = dataRows.map(r => {
+          const nr = r.map(c => decodeHtml(c));
+          while (nr.length < headers.length) nr.push("");
+          return nr.slice(0, headers.length);
+        });
+        return { headers: headers.map(c => decodeHtml(c)), aligns, rows: paddedRows, colCount: headers.length };
       };
 
       const tableData = parseTable();
       const { headers, aligns, rows, colCount } = tableData;
 
-      //  Sync DOM edits → markdown
+      // Build markdown string from data model
+      const buildMarkdown = (h: string[], a: string[], r: string[][]) => {
+        const headerStr = "| " + h.join(" | ") + " |";
+        const sepRow = "|" + h.map((_, i) => {
+          const al = a[i] || "left";
+          return al === "center" ? " :---: " : al === "right" ? " ---: " : " --- ";
+        }).join("|") + "|";
+        const dataStr = r.map(row => "| " + row.join(" | ") + " |").join("\n");
+        return dataStr ? [headerStr, sepRow, dataStr].join("\n") : [headerStr, sepRow].join("\n");
+      };
+
+      // Sync DOM edits → markdown
       const syncToMarkdown = () => {
         const container = document.querySelector(`[data-table="${block.id}"]`);
         if (!container) return;
         const ths = container.querySelectorAll("thead th[data-cell]");
-        const headerTexts = Array.from(ths).map((t: any) => t.textContent?.trim() || "");
+        const headerTexts = Array.from(ths).map((t: any) => (t.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\n/g, " "));
         const bodyRows = container.querySelectorAll("tbody tr[data-row]");
         const rowTexts = Array.from(bodyRows).map((tr: any) =>
-          Array.from(tr.querySelectorAll("td[data-cell]")).map((td: any) => td.textContent?.trim() || "")
+          Array.from(tr.querySelectorAll("td[data-cell]")).map((td: any) => (td.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\n/g, " "))
         );
-        const headerStr = "| " + headerTexts.join(" | ") + " |";
-        const sepRow = "|" + headerTexts.map((_, i) => {
-          const a = aligns[i] || "left";
-          return a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ";
-        }).join("|") + "|";
-        const dataStr = rowTexts.map(r => "| " + r.join(" | ") + " |").join("\n");
-        const md = dataStr ? [headerStr, sepRow, dataStr].join("\n") : [headerStr, sepRow].join("\n");
+        const md = buildMarkdown(headerTexts, aligns, rowTexts);
         onChange({ ...block, html: escapeHtml(md) });
       };
 
-      //  Add row at position
+      // Row operations
       const addRowAt = (pos: number) => {
         const newRows = [...rows];
         newRows.splice(pos, 0, Array(colCount).fill(""));
-        const headerStr = "| " + headers.join(" | ") + " |";
-        const sepRow = "|" + headers.map((_, i) => {
-          const a = aligns[i] || "left";
-          return a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ";
-        }).join("|") + "|";
-        const dataStr = newRows.map(r => "| " + r.join(" | ") + " |").join("\n");
-        onChange({ ...block, html: escapeHtml([headerStr, sepRow, dataStr].join("\n")) });
+        onChange({ ...block, html: escapeHtml(buildMarkdown(headers, aligns, newRows)) });
       };
 
-      //  Delete row
       const deleteRowAt = (pos: number) => {
-        if (rows.length <= 1) { onDelete(); return; }
+        if (rows.length <= 1) return; // Keep at least one row
         const newRows = [...rows];
         newRows.splice(pos, 1);
-        const headerStr = "| " + headers.join(" | ") + " |";
-        const sepRow = "|" + headers.map((_, i) => {
-          const a = aligns[i] || "left";
-          return a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ";
-        }).join("|") + "|";
-        const dataStr = newRows.map(r => "| " + r.join(" | ") + " |").join("\n");
-        onChange({ ...block, html: escapeHtml([headerStr, sepRow, dataStr].join("\n")) });
+        onChange({ ...block, html: escapeHtml(buildMarkdown(headers, aligns, newRows)) });
       };
 
-      //  Add column at position
+      // Column operations
       const addColAt = (pos: number) => {
         const newHeaders = [...headers];
         newHeaders.splice(pos, 0, "");
         const newAligns = [...aligns];
         newAligns.splice(pos, 0, "left");
-        const newRows = rows.map(r => {
-          const nr = [...r];
-          nr.splice(pos, 0, "");
-          return nr;
-        });
-        const headerStr = "| " + newHeaders.join(" | ") + " |";
-        const sepRow = "|" + newAligns.map(a => a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ").join("|") + "|";
-        const dataStr = newRows.map(r => "| " + r.join(" | ") + " |").join("\n");
-        onChange({ ...block, html: escapeHtml([headerStr, sepRow, dataStr].join("\n")) });
+        const newRows = rows.map(r => { const nr = [...r]; nr.splice(pos, 0, ""); return nr; });
+        onChange({ ...block, html: escapeHtml(buildMarkdown(newHeaders, newAligns, newRows)) });
       };
 
-      //  Delete column
       const deleteColAt = (pos: number) => {
-        if (colCount <= 1) return;
+        if (colCount <= 1) return; // Keep at least one column
         const newHeaders = [...headers];
         newHeaders.splice(pos, 1);
         const newAligns = [...aligns];
         newAligns.splice(pos, 1);
-        const newRows = rows.map(r => {
-          const nr = [...r];
-          nr.splice(pos, 1);
-          return nr;
-        });
-        const headerStr = "| " + newHeaders.join(" | ") + " |";
-        const sepRow = "|" + newAligns.map(a => a === "center" ? " :---: " : a === "right" ? " ---: " : " --- ").join("|") + "|";
-        const dataStr = newRows.map(r => "| " + r.join(" | ") + " |").join("\n");
-        onChange({ ...block, html: escapeHtml([headerStr, sepRow, dataStr].join("\n")) });
+        const newRows = rows.map(r => { const nr = [...r]; nr.splice(pos, 1); return nr; });
+        onChange({ ...block, html: escapeHtml(buildMarkdown(newHeaders, newAligns, newRows)) });
       };
 
+      // Ensure at least one data row for rendering
       const effectiveRows = rows.length > 0 ? rows : [Array(colCount).fill("")];
 
       const colAlign = (i: number) => (aligns[i] || "left") as "left" | "center" | "right";
@@ -898,14 +885,14 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                         onInput={syncToMarkdown} onBlur={syncToMarkdown}
                         className="px-3 py-2 text-left font-semibold border-b outline-none relative"
                         style={{ borderColor: "var(--border)", color: "var(--text)", backgroundColor: "var(--bg-subtle)", textAlign: colAlign(ci) }}>
-                        {cell}
+                        {cell || "\u200B"}
                         {tableHoverCol === ci && (
                           <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-0.5 z-20">
-                            <button onClick={() => addColAt(ci)} title="左侧添加列"
+                            <button onClick={(e) => { e.stopPropagation(); addColAt(ci); }} title="左侧添加列"
                               className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
                               style={{ backgroundColor: "var(--accent)", color: "white" }}>+</button>
                             {colCount > 1 && (
-                              <button onClick={() => deleteColAt(ci)} title="删除列"
+                              <button onClick={(e) => { e.stopPropagation(); deleteColAt(ci); }} title="删除列"
                                 className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
                                 style={{ backgroundColor: "var(--text-muted)", color: "white" }}>×</button>
                             )}
@@ -939,7 +926,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                         <td key={ci} data-cell contentEditable suppressContentEditableWarning
                           onInput={syncToMarkdown} onBlur={syncToMarkdown}
                           className="px-3 py-2 border-b outline-none"
-                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci) }}>{cell}</td>
+                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci), minHeight: "20px" }}>{cell || "\u200B"}</td>
                       ))}
                     </tr>
                   ))}
