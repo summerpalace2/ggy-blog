@@ -821,12 +821,15 @@ if (["ol", "ul", "todo"].includes(block.type)) {
         const container = document.querySelector(`[data-table="${block.id}"]`);
         if (!container) return;
         const ths = container.querySelectorAll("thead th[data-cell]");
-        const headerTexts = Array.from(ths).map((t: any) => (t.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\n/g, " "));
+        const headerTexts = Array.from(ths).map((t: any) => (t.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\|/g, "").replace(/\n/g, " "));
         const bodyRows = container.querySelectorAll("tbody tr[data-row]");
         const rowTexts = Array.from(bodyRows).map((tr: any) =>
-          Array.from(tr.querySelectorAll("td[data-cell]")).map((td: any) => (td.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\n/g, " "))
+          Array.from(tr.querySelectorAll("td[data-cell]")).map((td: any) => (td.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\|/g, "").replace(/\n/g, " "))
         );
-        const md = buildMarkdown(headerTexts, aligns, rowTexts);
+        const targetCols = headerTexts.length;
+        const normalizedRows = rowTexts.map((r: string[]) => { while (r.length < targetCols) r.push(""); return r.slice(0, targetCols); });
+        const currentAligns = headerTexts.map((_, i) => aligns[i] || "left");
+        const md = buildMarkdown(headerTexts, currentAligns, normalizedRows);
         onChange({ ...block, html: escapeHtml(md) });
       };
 
@@ -885,7 +888,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                         onInput={syncToMarkdown} onBlur={syncToMarkdown}
                         className="px-3 py-2 text-left font-semibold border-b outline-none relative"
                         style={{ borderColor: "var(--border)", color: "var(--text)", backgroundColor: "var(--bg-subtle)", textAlign: colAlign(ci) }}>
-                        {cell || "\u200B"}
+                        {cell || <br/>}
                         {tableHoverCol === ci && (
                           <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-0.5 z-20">
                             <button onClick={(e) => { e.stopPropagation(); addColAt(ci); }} title="左侧添加列"
@@ -926,7 +929,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
                         <td key={ci} data-cell contentEditable suppressContentEditableWarning
                           onInput={syncToMarkdown} onBlur={syncToMarkdown}
                           className="px-3 py-2 border-b outline-none"
-                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci), minHeight: "20px" }}>{cell || "\u200B"}</td>
+                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci), minHeight: "20px" }}>{cell || <br/>}</td>
                       ))}
                     </tr>
                   ))}
