@@ -1,4 +1,4 @@
-/**
+﻿/**
  * block-view/BlockView.tsx — 单个块的渲染组件
  * [核心职责] 渲染单个Block，包含左侧操作区、内容区、TypePicker弹窗、链接浮窗、有序列表菜单
  * [Android 类比] ListView 的 ViewHolder，负责单个列表项的渲染和交互
@@ -19,6 +19,7 @@ import {
 import { requestCursorRestoration } from "../../utils";
 import { CALLOUT_PRESETS, BLOCK_TYPES } from "../../types";
 import { CodeMirrorBlock } from "../code-block/CodeMirrorBlock";
+import { TableBlock } from "./TableBlock";
 
 
 // ── 代码块语言颜色映射 ──
@@ -98,8 +99,6 @@ export const BlockView: FC<Props> = ({
   useEffect(() => { setSideImgError(false); }, [block.sideImage]);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [olMenu, setOlMenu] = useState(false);
-  const [tableHoverCol, setTableHoverCol] = useState(-1);
-  const [tableHoverRow, setTableHoverRow] = useState(-1);
   useEffect(() => {
     if (!olMenu) return;
     const onDown = (e: MouseEvent) => {
@@ -782,179 +781,7 @@ if (["ol", "ul", "todo"].includes(block.type)) {
 
     // ── 表格 ──
     if (block.type === "table") {
-      // Decode HTML entities for cell rendering
-      const decodeHtml = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, "\"").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
-
-      //  Parse markdown table into data model
-      const parseTable = (): { headers: string[]; aligns: string[]; rows: string[][]; colCount: number } => {
-        const mdLines = block.html.split("\n").filter(l => l.trim().startsWith("|"));
-        const cells = mdLines.map(r => r.split("|").filter((c, i, a) => i > 0 && i < a.length - 1).map(c => c.trim()));
-        const headers = cells[0] || [];
-        const hasSep = cells.length > 1 && cells[1].length > 0 && cells[1].every(c => /^[-:]+$/.test(c));
-        const aligns = hasSep ? cells[1].map(c => c.startsWith(":") && c.endsWith(":") ? "center" : c.endsWith(":") ? "right" : "left") : headers.map(() => "left");
-        const dataRows = hasSep ? cells.slice(2) : cells.slice(1);
-        // Pad rows to correct column count, decode HTML entities
-        const paddedRows = dataRows.map(r => {
-          const nr = r.map(c => decodeHtml(c));
-          while (nr.length < headers.length) nr.push("");
-          return nr.slice(0, headers.length);
-        });
-        return { headers: headers.map(c => decodeHtml(c)), aligns, rows: paddedRows, colCount: headers.length };
-      };
-
-      const tableData = parseTable();
-      const { headers, aligns, rows, colCount } = tableData;
-
-      // Build markdown string from data model
-      const buildMarkdown = (h: string[], a: string[], r: string[][]) => {
-        const headerStr = "| " + h.join(" | ") + " |";
-        const sepRow = "|" + h.map((_, i) => {
-          const al = a[i] || "left";
-          return al === "center" ? " :---: " : al === "right" ? " ---: " : " --- ";
-        }).join("|") + "|";
-        const dataStr = r.map(row => "| " + row.join(" | ") + " |").join("\n");
-        return dataStr ? [headerStr, sepRow, dataStr].join("\n") : [headerStr, sepRow].join("\n");
-      };
-
-      // Sync DOM edits → markdown
-      const syncToMarkdown = () => {
-        const container = document.querySelector(`[data-table="${block.id}"]`);
-        if (!container) return;
-        const ths = container.querySelectorAll("thead th[data-cell]");
-        const headerTexts = Array.from(ths).map((t: any) => (t.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\|/g, "").replace(/\n/g, " "));
-        const bodyRows = container.querySelectorAll("tbody tr[data-row]");
-        const rowTexts = Array.from(bodyRows).map((tr: any) =>
-          Array.from(tr.querySelectorAll("td[data-cell]")).map((td: any) => (td.textContent?.trim() || "").replace(/\u200B/g, "").replace(/\|/g, "").replace(/\n/g, " "))
-        );
-        const targetCols = headerTexts.length;
-        const normalizedRows = rowTexts.map((r: string[]) => { while (r.length < targetCols) r.push(""); return r.slice(0, targetCols); });
-        const currentAligns = headerTexts.map((_, i) => aligns[i] || "left");
-        const md = buildMarkdown(headerTexts, currentAligns, normalizedRows);
-        onChange({ ...block, html: escapeHtml(md) });
-      };
-
-      // Row operations
-      const addRowAt = (pos: number) => {
-        const newRows = [...rows];
-        newRows.splice(pos, 0, Array(colCount).fill(""));
-        onChange({ ...block, html: escapeHtml(buildMarkdown(headers, aligns, newRows)) });
-      };
-
-      const deleteRowAt = (pos: number) => {
-        if (rows.length <= 1) return; // Keep at least one row
-        const newRows = [...rows];
-        newRows.splice(pos, 1);
-        onChange({ ...block, html: escapeHtml(buildMarkdown(headers, aligns, newRows)) });
-      };
-
-      // Column operations
-      const addColAt = (pos: number) => {
-        const newHeaders = [...headers];
-        newHeaders.splice(pos, 0, "");
-        const newAligns = [...aligns];
-        newAligns.splice(pos, 0, "left");
-        const newRows = rows.map(r => { const nr = [...r]; nr.splice(pos, 0, ""); return nr; });
-        onChange({ ...block, html: escapeHtml(buildMarkdown(newHeaders, newAligns, newRows)) });
-      };
-
-      const deleteColAt = (pos: number) => {
-        if (colCount <= 1) return; // Keep at least one column
-        const newHeaders = [...headers];
-        newHeaders.splice(pos, 1);
-        const newAligns = [...aligns];
-        newAligns.splice(pos, 1);
-        const newRows = rows.map(r => { const nr = [...r]; nr.splice(pos, 1); return nr; });
-        onChange({ ...block, html: escapeHtml(buildMarkdown(newHeaders, newAligns, newRows)) });
-      };
-
-      // Ensure at least one data row for rendering
-      const effectiveRows = rows.length > 0 ? rows : [Array(colCount).fill("")];
-
-      const colAlign = (i: number) => (aligns[i] || "left") as "left" | "center" | "right";
-
-      return (
-        <div className="space-y-2" onMouseLeave={() => { setTableHoverCol(-1); setTableHoverRow(-1); }}>
-          <div className="relative rounded-lg border" style={{ borderColor: "var(--border)" }} data-table={block.id}>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse font-sans text-sm">
-                <colgroup>
-                  <col style={{ width: 32 }} />
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th style={{ width: 32 }} className="!p-0 !border-0"></th>
-                    {headers.map((cell, ci) => (
-                      <th key={ci} data-cell contentEditable suppressContentEditableWarning
-                        onInput={syncToMarkdown} onBlur={syncToMarkdown}
-                        className="px-3 py-2 text-left font-semibold border-b outline-none relative"
-                        style={{ borderColor: "var(--border)", color: "var(--text)", backgroundColor: "var(--bg-subtle)", textAlign: colAlign(ci) }}>
-                        {cell || <br/>}
-                        {tableHoverCol === ci && (
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 flex gap-0.5 z-20">
-                            <button onClick={(e) => { e.stopPropagation(); addColAt(ci); }} title="左侧添加列"
-                              className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
-                              style={{ backgroundColor: "var(--accent)", color: "white" }}>+</button>
-                            {colCount > 1 && (
-                              <button onClick={(e) => { e.stopPropagation(); deleteColAt(ci); }} title="删除列"
-                                className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
-                                style={{ backgroundColor: "var(--text-muted)", color: "white" }}>×</button>
-                            )}
-                          </div>
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {effectiveRows.map((row, ri) => (
-                    <tr key={ri} data-row
-                      onMouseEnter={() => setTableHoverRow(ri)}
-                      onMouseLeave={() => setTableHoverRow(-1)}
-                      style={{ backgroundColor: ri % 2 === 0 ? "transparent" : "var(--bg-subtle)" }}>
-                      <td className="!p-0 !border-0 relative" style={{ width: 32 }}>
-                        {tableHoverRow === ri && (
-                          <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 z-20">
-                            <button onClick={() => addRowAt(ri)} title="上方添加行"
-                              className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
-                              style={{ backgroundColor: "var(--accent)", color: "white" }}>+</button>
-                            {rows.length > 1 && (
-                              <button onClick={() => deleteRowAt(ri)} title="删除行"
-                                className="w-4 h-4 rounded text-[10px] flex items-center justify-center shadow-sm"
-                                style={{ backgroundColor: "var(--text-muted)", color: "white" }}>×</button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      {row.map((cell, ci) => (
-                        <td key={ci} data-cell contentEditable suppressContentEditableWarning
-                          onInput={syncToMarkdown} onBlur={syncToMarkdown}
-                          className="px-3 py-2 border-b outline-none"
-                          style={{ borderColor: "var(--border-light)", color: "var(--text)", textAlign: colAlign(ci), minHeight: "20px" }}>{cell || <br/>}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* 底部操作栏 */}
-            <div className="flex items-center justify-between px-2 py-1.5 border-t"
-              style={{ borderColor: "var(--border-light)", backgroundColor: "var(--bg-subtle)" }}>
-              <button onClick={() => addRowAt(effectiveRows.length)}
-                className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
-                style={{ color: "var(--text-muted)" }}>+ 添加行</button>
-              <div className="flex items-center gap-2">
-                <button onClick={() => addColAt(colCount)}
-                  className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
-                  style={{ color: "var(--text-muted)" }}>+ 添加列</button>
-                <button onClick={() => onDelete()}
-                  className="text-xs px-2 py-0.5 rounded hover:bg-[var(--bg-card)]"
-                  style={{ color: "var(--text-muted)" }}>删除表格</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
+      return <TableBlock block={block} onChange={onChange} onDelete={onDelete} />;
     }
 
     if (block.type === "toggle") {
